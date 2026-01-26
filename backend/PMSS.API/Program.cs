@@ -1,7 +1,18 @@
 using PMSS.Infrastructure.DependencyInjection;
 using PMSS.Infrastructure.Middleware;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .CreateLogger();
+
+try
+{
+    Log.Information("Starting PMSS API application");
+
+    builder.Host.UseSerilog();
 
 builder.Services.AddControllers();
 
@@ -36,6 +47,15 @@ app.UseCors("AllowAll");
 
 app.UseAuthorization();
 
-app.MapControllers();
+    app.MapControllers();
 
-app.Run();
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

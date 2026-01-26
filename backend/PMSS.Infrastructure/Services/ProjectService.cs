@@ -1,10 +1,11 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.GithubRepo;
 using PMSS.Application.DTOs.Project;
 using PMSS.Application.Interfaces.Repositories;
 using PMSS.Application.Interfaces.Services;
 using PMSS.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace PMSS.Infrastructure.Services;
 
@@ -12,17 +13,22 @@ public class ProjectService : IProjectService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly IGithubApiService _githubApiService;
+    private readonly ILogger<ProjectService> _logger;
 
-    public ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiService)
+    public ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiService, ILogger<ProjectService> logger)
     {
         _unitOfWork = unitOfWork;
         _githubApiService = githubApiService;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<PagedResult<ProjectDto>>> GetAllProjectsAsync(ProjectFilterParams filterParams)
     {
         try
         {
+            _logger.LogInformation("Getting all projects with filters: ClassId={ClassId}, PageNumber={PageNumber}", 
+                filterParams.ClassId, filterParams.PageNumber);
+
             var query = (await _unitOfWork.Projects.GetAllAsync()).AsQueryable();
 
             if (filterParams.ClassId.HasValue)
