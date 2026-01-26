@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.Course;
 using PMSS.Application.Interfaces.Repositories;
@@ -9,16 +10,21 @@ namespace PMSS.Infrastructure.Services;
 public class CourseService : ICourseService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<CourseService> _logger;
 
-    public CourseService(IUnitOfWork unitOfWork)
+    public CourseService(IUnitOfWork unitOfWork, ILogger<CourseService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<PagedResult<CourseDto>>> GetAllCoursesAsync(CourseFilterParams filterParams)
     {
         try
         {
+            _logger.LogInformation("Getting all courses with filters: Code={Code}, Name={Name}, PageNumber={PageNumber}", 
+                filterParams.Code, filterParams.Name, filterParams.PageNumber);
+
             var query = (await _unitOfWork.Courses.GetAllAsync()).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(filterParams.Code))

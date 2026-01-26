@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.Semester;
 using PMSS.Application.Interfaces.Repositories;
@@ -10,16 +11,21 @@ namespace PMSS.Infrastructure.Services;
 public class SemesterService : ISemesterService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<SemesterService> _logger;
 
-    public SemesterService(IUnitOfWork unitOfWork)
+    public SemesterService(IUnitOfWork unitOfWork, ILogger<SemesterService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<PagedResult<SemesterDto>>> GetAllSemestersAsync(SemesterFilterParams filterParams)
     {
         try
         {
+            _logger.LogInformation("Getting all semesters with filters: PageNumber={PageNumber}, PageSize={PageSize}", 
+                filterParams.PageNumber, filterParams.PageSize);
+
             var query = (await _unitOfWork.Semesters.GetAllAsync()).AsQueryable();
 
             if (filterParams.StartDateFrom.HasValue)
@@ -55,10 +61,12 @@ public class SemesterService : ISemesterService
                 PageSize = filterParams.PageSize
             };
 
+            _logger.LogInformation("Successfully retrieved {Count} semesters", items.Count);
             return ApiResponse<PagedResult<SemesterDto>>.SuccessResponse(result);
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error retrieving semesters");
             return ApiResponse<PagedResult<SemesterDto>>.ErrorResponse("Error retrieving semesters", ex.Message);
         }
     }
@@ -67,14 +75,20 @@ public class SemesterService : ISemesterService
     {
         try
         {
+            _logger.LogInformation("Getting semester by id: {SemesterId}", id);
             var semester = await _unitOfWork.Semesters.GetByIdAsync(id);
             if (semester == null)
+            {
+                _logger.LogWarning("Semester not found: {SemesterId}", id);
                 return ApiResponse<SemesterDto>.ErrorResponse("Semester not found");
+            }
 
+            _logger.LogInformation("Successfully retrieved semester: {SemesterId}", id);
             return ApiResponse<SemesterDto>.SuccessResponse(MapToDto(semester));
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error retrieving semester: {SemesterId}", id);
             return ApiResponse<SemesterDto>.ErrorResponse("Error retrieving semester", ex.Message);
         }
     }
@@ -83,12 +97,19 @@ public class SemesterService : ISemesterService
     {
         try
         {
+            _logger.LogInformation("Creating semester: {SemesterName}", dto.Name);
             var existingSemester = await _unitOfWork.Semesters.GetByNameAsync(dto.Name);
             if (existingSemester != null)
+            {
+                _logger.LogWarning("Semester with name already exists: {SemesterName}", dto.Name);
                 return ApiResponse<SemesterDto>.ErrorResponse("Semester with this name already exists");
+            }
 
             if (dto.EndDate <= dto.StartDate)
+            {
+                _logger.LogWarning("Invalid date range for semester: {SemesterName}", dto.Name);
                 return ApiResponse<SemesterDto>.ErrorResponse("End date must be after start date");
+            }
 
             var semester = new Semester
             {
@@ -102,10 +123,12 @@ public class SemesterService : ISemesterService
             await _unitOfWork.Semesters.AddAsync(semester);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Successfully created semester: {SemesterId}", semester.SemesterId);
             return ApiResponse<SemesterDto>.SuccessResponse(MapToDto(semester), "Semester created successfully");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error creating semester: {SemesterName}", dto.Name);
             return ApiResponse<SemesterDto>.ErrorResponse("Error creating semester", ex.Message);
         }
     }
@@ -114,16 +137,26 @@ public class SemesterService : ISemesterService
     {
         try
         {
+            _logger.LogInformation("Updating semester: {SemesterId}", id);
             var semester = await _unitOfWork.Semesters.GetByIdAsync(id);
             if (semester == null)
+            {
+                _logger.LogWarning("Semester not found for update: {SemesterId}", id);
                 return ApiResponse<SemesterDto>.ErrorResponse("Semester not found");
+            }
 
             var existingSemester = await _unitOfWork.Semesters.GetByNameAsync(dto.Name);
             if (existingSemester != null && existingSemester.SemesterId != id)
+            {
+                _logger.LogWarning("Semester with name already exists: {SemesterName}", dto.Name);
                 return ApiResponse<SemesterDto>.ErrorResponse("Semester with this name already exists");
+            }
 
             if (dto.EndDate <= dto.StartDate)
+            {
+                _logger.LogWarning("Invalid date range for semester update: {SemesterId}", id);
                 return ApiResponse<SemesterDto>.ErrorResponse("End date must be after start date");
+            }
 
             semester.Name = dto.Name;
             semester.StartDate = dto.StartDate;
@@ -133,10 +166,12 @@ public class SemesterService : ISemesterService
             _unitOfWork.Semesters.Update(semester);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Successfully updated semester: {SemesterId}", id);
             return ApiResponse<SemesterDto>.SuccessResponse(MapToDto(semester), "Semester updated successfully");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error updating semester: {SemesterId}", id);
             return ApiResponse<SemesterDto>.ErrorResponse("Error updating semester", ex.Message);
         }
     }
@@ -145,17 +180,23 @@ public class SemesterService : ISemesterService
     {
         try
         {
+            _logger.LogInformation("Deleting semester: {SemesterId}", id);
             var semester = await _unitOfWork.Semesters.GetByIdAsync(id);
             if (semester == null)
+            {
+                _logger.LogWarning("Semester not found for deletion: {SemesterId}", id);
                 return ApiResponse<bool>.ErrorResponse("Semester not found");
+            }
 
             _unitOfWork.Semesters.Remove(semester);
             await _unitOfWork.SaveChangesAsync();
 
+            _logger.LogInformation("Successfully deleted semester: {SemesterId}", id);
             return ApiResponse<bool>.SuccessResponse(true, "Semester deleted successfully");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error deleting semester: {SemesterId}", id);
             return ApiResponse<bool>.ErrorResponse("Error deleting semester", ex.Message);
         }
     }
