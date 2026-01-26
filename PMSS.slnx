@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="PMSS.API/PMSS.API.csproj" />
+  <Project Path="PMSS.Application/PMSS.Application.csproj" />
+  <Project Path="PMSS.Domain/PMSS.Domain.csproj" />
+  <Project Path="PMSS.Infrastructure/PMSS.Infrastructure.csproj" />
+</Solution>
