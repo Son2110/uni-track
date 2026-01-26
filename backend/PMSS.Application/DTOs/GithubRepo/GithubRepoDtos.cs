@@ -5,11 +5,26 @@ public class GithubRepoDto
     public Guid GithubRepoId { get; set; }
     public Guid ProjectId { get; set; }
     public string ProjectName { get; set; } = string.Empty;
+    public Guid CourseId { get; set; }
+    public string CourseName { get; set; } = string.Empty;
+    public string CourseCode { get; set; } = string.Empty;
     public string RepoOwnerName { get; set; } = string.Empty;
     public string RepoName { get; set; } = string.Empty;
+    public string RepoUrl { get; set; } = string.Empty;
     public bool IsPrivate { get; set; }
+    public int ContributorCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public List<RepoContributorDto> Contributors { get; set; } = new();
+}
+
+public class RepoContributorDto
+{
+    public string GithubUsername { get; set; } = string.Empty;
+    public string? GithubEmail { get; set; }
+    public Guid? UserId { get; set; }
+    public string? UserFullName { get; set; }
+    public DateTime AddedAt { get; set; }
 }
 
 public class CreateGithubRepoDto
@@ -32,6 +47,8 @@ public class UpdateGithubRepoDto
 public class GithubRepoFilterParams : PMSS.Application.DTOs.Common.PaginationParams
 {
     public Guid? ProjectId { get; set; }
+    public Guid? CourseId { get; set; }
+    public Guid? UserId { get; set; }
     public string? RepoOwnerName { get; set; }
     public bool? IsPrivate { get; set; }
 }
@@ -81,4 +98,25 @@ public class WeeklyContributorActivityDto
     public int Commits { get; set; }
     public int Additions { get; set; }
     public int Deletions { get; set; }
+}
+
+public class AddContributorToRepoDto
+{
+    public Guid GithubRepoId { get; set; }
+    public Guid UserId { get; set; }
+}
+
+public class RemoveContributorFromRepoDto
+{
+    public Guid GithubRepoId { get; set; }
+    public Guid UserId { get; set; }
+}
+
+public class CourseGithubReposDto
+{
+    public Guid CourseId { get; set; }
+    public string CourseName { get; set; } = string.Empty;
+    public string CourseCode { get; set; } = string.Empty;
+    public int TotalRepos { get; set; }
+    public List<GithubRepoDto> Repositories { get; set; } = new();
 }

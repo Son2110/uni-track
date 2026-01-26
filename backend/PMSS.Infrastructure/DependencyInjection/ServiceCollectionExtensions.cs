@@ -39,6 +39,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<ICourseService, CourseService>();
         services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IGithubRepoService, GithubRepoService>();
 
         return services;
     }
