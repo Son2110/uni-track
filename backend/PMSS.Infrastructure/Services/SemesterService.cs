@@ -95,8 +95,8 @@ public class SemesterService : ISemesterService
                 Name = dto.Name,
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
 
             await _unitOfWork.Semesters.AddAsync(semester);
@@ -128,7 +128,7 @@ public class SemesterService : ISemesterService
             semester.Name = dto.Name;
             semester.StartDate = dto.StartDate;
             semester.EndDate = dto.EndDate;
-            semester.UpdatedAt = DateTime.UtcNow;
+            semester.UpdatedAt = DateTime.Now;
 
             _unitOfWork.Semesters.Update(semester);
             await _unitOfWork.SaveChangesAsync();

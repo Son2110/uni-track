@@ -93,8 +93,8 @@ public class ProjectService : IProjectService
                 ClassId = dto.ClassId,
                 Name = dto.Name,
                 Description = dto.Description,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
 
             await _unitOfWork.Projects.AddAsync(project);
@@ -119,7 +119,7 @@ public class ProjectService : IProjectService
 
             project.Name = dto.Name;
             project.Description = dto.Description;
-            project.UpdatedAt = DateTime.UtcNow;
+            project.UpdatedAt = DateTime.Now;
 
             _unitOfWork.Projects.Update(project);
             await _unitOfWork.SaveChangesAsync();

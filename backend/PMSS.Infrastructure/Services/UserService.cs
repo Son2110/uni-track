@@ -95,8 +95,8 @@ public class UserService : IUserService
                 GithubUsername = dto.GithubUsername,
                 GithubEmail = dto.GithubEmail,
                 Role = dto.Role,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
 
             await _unitOfWork.Users.AddAsync(user);
@@ -134,7 +134,7 @@ public class UserService : IUserService
             user.GithubUsername = dto.GithubUsername;
             user.GithubEmail = dto.GithubEmail;
             user.Role = dto.Role;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
 
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
@@ -178,7 +178,7 @@ public class UserService : IUserService
                 return ApiResponse<bool>.ErrorResponse("Current password is incorrect");
 
             user.HashedPassword = PasswordHasher.HashPassword(dto.NewPassword);
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
 
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
