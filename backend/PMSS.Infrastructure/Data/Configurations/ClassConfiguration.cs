@@ -10,11 +10,11 @@ public class ClassConfiguration : IEntityTypeConfiguration<Class>
     {
         builder.HasKey(c => c.ClassId);
         
-        builder.Property(c => c.Section)
+        builder.Property(c => c.ClassCode)
             .IsRequired()
             .HasMaxLength(50);
         
-        builder.HasIndex(c => new { c.SemesterId, c.CourseId, c.Section })
+        builder.HasIndex(c => new { c.SemesterId, c.CourseId, c.ClassCode })
             .IsUnique()
             .HasDatabaseName("unique_class_per_semester_course");
         

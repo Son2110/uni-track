@@ -6,7 +6,7 @@ public class ClassEnrollmentDto
     public string ClassName { get; set; } = string.Empty;
     public string CourseCode { get; set; } = string.Empty;
     public string CourseName { get; set; } = string.Empty;
-    public string Section { get; set; } = string.Empty;
+    public string ClassCode { get; set; } = string.Empty;
     public string SemesterName { get; set; } = string.Empty;
     public string TeacherName { get; set; } = string.Empty;
     public Guid UserId { get; set; }

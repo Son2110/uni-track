@@ -344,7 +344,7 @@ public class ProjectService : IProjectService
         {
             ProjectId = project.ProjectId,
             ClassId = project.ClassId,
-            ClassName = $"{project.Class?.Course?.Code ?? ""} - Section {project.Class?.Section ?? ""}",
+            ClassName = $"{project.Class?.Course?.Code ?? ""} - Section {project.Class?.ClassCode ?? ""}",
             CourseCode = project.Class?.Course?.Code ?? string.Empty,
             CourseName = project.Class?.Course?.Name ?? string.Empty,
             Name = project.Name,

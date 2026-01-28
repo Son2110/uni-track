@@ -308,10 +308,10 @@ public class ClassEnrollmentService : IClassEnrollmentService
         return new ClassEnrollmentDto
         {
             ClassId = enrollment.ClassId,
-            ClassName = $"{enrollment.Course?.Code} - {enrollment.Class?.Section}",
+            ClassName = $"{enrollment.Course?.Code} - {enrollment.Class?.ClassCode}",
             CourseCode = enrollment.Course?.Code ?? string.Empty,
             CourseName = enrollment.Course?.Name ?? string.Empty,
-            Section = enrollment.Class?.Section ?? string.Empty,
+            ClassCode = enrollment.Class?.ClassCode ?? string.Empty,
             SemesterName = enrollment.Class?.Semester?.Name ?? string.Empty,
             TeacherName = enrollment.Class?.Teacher?.Name ?? string.Empty,
             UserId = enrollment.UserId,

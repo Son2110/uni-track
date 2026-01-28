@@ -37,7 +37,7 @@ public class ClassService : IClassService
                 query = query.Where(c => c.TeacherId == filterParams.TeacherId.Value);
 
             if (!string.IsNullOrWhiteSpace(filterParams.SearchTerm))
-                query = query.Where(c => c.Section.Contains(filterParams.SearchTerm));
+                query = query.Where(c => c.ClassCode.Contains(filterParams.SearchTerm));
 
             var totalCount = query.Count();
 
@@ -146,8 +146,8 @@ public class ClassService : IClassService
     {
         try
         {
-            _logger.LogInformation("Creating class for Semester: {SemesterId}, Course: {CourseId}, Section: {Section}",
-                dto.SemesterId, dto.CourseId, dto.Section);
+            _logger.LogInformation("Creating class for Semester: {SemesterId}, Course: {CourseId}, ClassCode: {ClassCode}",
+                dto.SemesterId, dto.CourseId, dto.ClassCode);
 
             // Validate semester exists
             var semester = await _unitOfWork.Semesters.GetByIdAsync(dto.SemesterId);
@@ -175,19 +175,19 @@ public class ClassService : IClassService
 
             // Check if class already exists
             var existingClass = await _unitOfWork.Classes.GetClassBySemesterCourseAndSectionAsync(
-                dto.SemesterId, dto.CourseId, dto.Section);
+                dto.SemesterId, dto.CourseId, dto.ClassCode);
             if (existingClass != null)
             {
-                _logger.LogWarning("Class already exists for Semester: {SemesterId}, Course: {CourseId}, Section: {Section}",
-                    dto.SemesterId, dto.CourseId, dto.Section);
-                return ApiResponse<ClassDto>.ErrorResponse("Class with this semester, course, and section already exists");
+                _logger.LogWarning("Class already exists for Semester: {SemesterId}, Course: {CourseId}, ClassCode: {ClassCode}",
+                    dto.SemesterId, dto.CourseId, dto.ClassCode);
+                return ApiResponse<ClassDto>.ErrorResponse("Class with this semester, course, and class code already exists");
             }
 
             var classEntity = new Class
             {
                 SemesterId = dto.SemesterId,
                 CourseId = dto.CourseId,
-                Section = dto.Section,
+                ClassCode = dto.ClassCode,
                 TeacherId = dto.TeacherId,
                 CreatedAt = DateTime.Now,
                 UpdatedAt = DateTime.Now
@@ -229,7 +229,7 @@ public class ClassService : IClassService
                 return ApiResponse<ClassDto>.ErrorResponse("Teacher not found");
             }
 
-            classEntity.Section = dto.Section;
+            classEntity.ClassCode = dto.ClassCode;
             classEntity.TeacherId = dto.TeacherId;
             classEntity.UpdatedAt = DateTime.Now;
 
@@ -284,7 +284,7 @@ public class ClassService : IClassService
             CourseId = classEntity.CourseId,
             CourseCode = classEntity.Course?.Code ?? string.Empty,
             CourseName = classEntity.Course?.Name ?? string.Empty,
-            Section = classEntity.Section,
+            ClassCode = classEntity.ClassCode,
             TeacherId = classEntity.TeacherId,
             TeacherName = classEntity.Teacher?.Name ?? string.Empty,
             CreatedAt = classEntity.CreatedAt,
@@ -295,14 +295,15 @@ public class ClassService : IClassService
     private static IQueryable<Class> ApplySorting(IQueryable<Class> query, string? sortBy, bool descending)
     {
         if (string.IsNullOrWhiteSpace(sortBy))
-            return query.OrderBy(c => c.Section);
+            return query.OrderBy(c => c.ClassCode);
 
         return sortBy.ToLower() switch
         {
-            "section" => descending ? query.OrderByDescending(c => c.Section) : query.OrderBy(c => c.Section),
+            "classcode" => descending ? query.OrderByDescending(c => c.ClassCode) : query.OrderBy(c => c.ClassCode),
+            "section" => descending ? query.OrderByDescending(c => c.ClassCode) : query.OrderBy(c => c.ClassCode),
             "createdat" => descending ? query.OrderByDescending(c => c.CreatedAt) : query.OrderBy(c => c.CreatedAt),
             "updatedat" => descending ? query.OrderByDescending(c => c.UpdatedAt) : query.OrderBy(c => c.UpdatedAt),
-            _ => query.OrderBy(c => c.Section)
+            _ => query.OrderBy(c => c.ClassCode)
         };
     }
 }
