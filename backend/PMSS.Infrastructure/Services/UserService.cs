@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.User;
 using PMSS.Application.Interfaces.Repositories;
@@ -10,16 +11,21 @@ namespace PMSS.Infrastructure.Services;
 public class UserService : IUserService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<UserService> _logger;
 
-    public UserService(IUnitOfWork unitOfWork)
+    public UserService(IUnitOfWork unitOfWork, ILogger<UserService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<PagedResult<UserDto>>> GetAllUsersAsync(UserFilterParams filterParams)
     {
         try
         {
+            _logger.LogInformation("Getting all users with filters: Role={Role}, PageNumber={PageNumber}, PageSize={PageSize}", 
+                filterParams.Role, filterParams.PageNumber, filterParams.PageSize);
+
             var query = (await _unitOfWork.Users.GetAllAsync()).AsQueryable();
 
             if (filterParams.Role.HasValue)
@@ -95,8 +101,8 @@ public class UserService : IUserService
                 GithubUsername = dto.GithubUsername,
                 GithubEmail = dto.GithubEmail,
                 Role = dto.Role,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
 
             await _unitOfWork.Users.AddAsync(user);
@@ -134,7 +140,7 @@ public class UserService : IUserService
             user.GithubUsername = dto.GithubUsername;
             user.GithubEmail = dto.GithubEmail;
             user.Role = dto.Role;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
 
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
@@ -178,7 +184,7 @@ public class UserService : IUserService
                 return ApiResponse<bool>.ErrorResponse("Current password is incorrect");
 
             user.HashedPassword = PasswordHasher.HashPassword(dto.NewPassword);
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = DateTime.Now;
 
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();

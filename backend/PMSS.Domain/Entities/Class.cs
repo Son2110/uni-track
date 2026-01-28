@@ -5,7 +5,7 @@ public class Class
     public Guid ClassId { get; set; }
     public Guid SemesterId { get; set; }
     public Guid CourseId { get; set; }
-    public string Section { get; set; } = string.Empty;
+    public string ClassCode { get; set; } = string.Empty;
     public Guid TeacherId { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }

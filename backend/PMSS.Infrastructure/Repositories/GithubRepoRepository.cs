@@ -22,7 +22,52 @@ public class GithubRepoRepository : GenericRepository<GithubRepo>, IGithubRepoRe
     {
         return await _dbSet
             .Include(gr => gr.Project)
+                .ThenInclude(p => p.Class)
+                    .ThenInclude(c => c.Course)
+            .Include(gr => gr.RepoContributors)
+                .ThenInclude(rc => rc.User)
             .Where(gr => gr.ProjectId == projectId)
             .ToListAsync();
+    }
+
+    public async Task<IEnumerable<GithubRepo>> GetReposByCourseIdAsync(Guid courseId)
+    {
+        return await _dbSet
+            .Include(gr => gr.Project)
+                .ThenInclude(p => p.Class)
+                    .ThenInclude(c => c.Course)
+            .Include(gr => gr.RepoContributors)
+                .ThenInclude(rc => rc.User)
+            .Where(gr => gr.Project.Class.CourseId == courseId)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<GithubRepo>> GetReposByUserIdAsync(Guid userId)
+    {
+        return await _dbSet
+            .Include(gr => gr.Project)
+                .ThenInclude(p => p.Class)
+                    .ThenInclude(c => c.Course)
+            .Include(gr => gr.Project)
+                .ThenInclude(p => p.ProjectMembers)
+            .Include(gr => gr.RepoContributors)
+                .ThenInclude(rc => rc.User)
+            .Where(gr => gr.Project.ProjectMembers.Any(pm => pm.UserId == userId) ||
+                        gr.RepoContributors.Any(rc => rc.UserId == userId))
+            .ToListAsync();
+    }
+
+    public async Task<GithubRepo?> GetRepoWithDetailsAsync(Guid repoId)
+    {
+        return await _dbSet
+            .Include(gr => gr.Project)
+                .ThenInclude(p => p.Class)
+                    .ThenInclude(c => c.Course)
+            .Include(gr => gr.Project)
+                .ThenInclude(p => p.ProjectMembers)
+                    .ThenInclude(pm => pm.User)
+            .Include(gr => gr.RepoContributors)
+                .ThenInclude(rc => rc.User)
+            .FirstOrDefaultAsync(gr => gr.GithubRepoId == repoId);
     }
 }

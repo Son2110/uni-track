@@ -36,4 +36,9 @@ public class ProjectMemberRepository : GenericRepository<ProjectMember>, IProjec
             .Where(pm => pm.UserId == userId)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<ProjectMember>> GetByProjectIdAsync(Guid projectId)
+    {
+        return await GetMembersByProjectIdAsync(projectId);
+    }
 }

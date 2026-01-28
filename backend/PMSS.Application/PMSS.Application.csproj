@@ -10,4 +10,8 @@
     <ProjectReference Include="..\PMSS.Domain\PMSS.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="DTOs\Auth\" />
+  </ItemGroup>
+
 </Project>

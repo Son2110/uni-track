@@ -8,7 +8,7 @@ public class ClassDto
     public Guid CourseId { get; set; }
     public string CourseCode { get; set; } = string.Empty;
     public string CourseName { get; set; } = string.Empty;
-    public string Section { get; set; } = string.Empty;
+    public string ClassCode { get; set; } = string.Empty;
     public Guid TeacherId { get; set; }
     public string TeacherName { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
@@ -19,13 +19,13 @@ public class CreateClassDto
 {
     public Guid SemesterId { get; set; }
     public Guid CourseId { get; set; }
-    public string Section { get; set; } = string.Empty;
+    public string ClassCode { get; set; } = string.Empty;
     public Guid TeacherId { get; set; }
 }
 
 public class UpdateClassDto
 {
-    public string Section { get; set; } = string.Empty;
+    public string ClassCode { get; set; } = string.Empty;
     public Guid TeacherId { get; set; }
 }
 

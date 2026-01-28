@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.Course;
 using PMSS.Application.Interfaces.Repositories;
@@ -9,16 +10,21 @@ namespace PMSS.Infrastructure.Services;
 public class CourseService : ICourseService
 {
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ILogger<CourseService> _logger;
 
-    public CourseService(IUnitOfWork unitOfWork)
+    public CourseService(IUnitOfWork unitOfWork, ILogger<CourseService> logger)
     {
         _unitOfWork = unitOfWork;
+        _logger = logger;
     }
 
     public async Task<ApiResponse<PagedResult<CourseDto>>> GetAllCoursesAsync(CourseFilterParams filterParams)
     {
         try
         {
+            _logger.LogInformation("Getting all courses with filters: Code={Code}, Name={Name}, PageNumber={PageNumber}", 
+                filterParams.Code, filterParams.Name, filterParams.PageNumber);
+
             var query = (await _unitOfWork.Courses.GetAllAsync()).AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(filterParams.Code))
@@ -85,8 +91,8 @@ public class CourseService : ICourseService
                 Code = dto.Code,
                 Name = dto.Name,
                 Description = dto.Description,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
 
             await _unitOfWork.Courses.AddAsync(course);
@@ -116,7 +122,7 @@ public class CourseService : ICourseService
             course.Code = dto.Code;
             course.Name = dto.Name;
             course.Description = dto.Description;
-            course.UpdatedAt = DateTime.UtcNow;
+            course.UpdatedAt = DateTime.Now;
 
             _unitOfWork.Courses.Update(course);
             await _unitOfWork.SaveChangesAsync();
