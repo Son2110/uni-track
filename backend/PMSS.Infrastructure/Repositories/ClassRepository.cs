@@ -49,12 +49,12 @@ public class ClassRepository : GenericRepository<Class>, IClassRepository
             .ToListAsync();
     }
 
-    public async Task<Class?> GetClassBySemesterCourseAndSectionAsync(Guid semesterId, Guid courseId, string section)
+    public async Task<Class?> GetClassBySemesterCourseAndSectionAsync(Guid semesterId, Guid courseId, string classCode)
     {
         return await _dbSet
             .Include(c => c.Semester)
             .Include(c => c.Course)
             .Include(c => c.Teacher)
-            .FirstOrDefaultAsync(c => c.SemesterId == semesterId && c.CourseId == courseId && c.Section == section);
+            .FirstOrDefaultAsync(c => c.SemesterId == semesterId && c.CourseId == courseId && c.ClassCode == classCode);
     }
 }
