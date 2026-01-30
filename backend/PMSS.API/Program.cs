@@ -1,5 +1,7 @@
 using PMSS.Infrastructure.DependencyInjection;
 using PMSS.Infrastructure.Middleware;
+using PMSS.API.GraphQL;
+using PMSS.Infrastructure.Data;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +22,15 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Add GraphQL with query-only support
+builder.Services
+    .AddGraphQLServer()
+    .AddQueryType<Query>()
+    .AddProjections()
+    .AddFiltering()
+    .AddSorting()
+    .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = builder.Environment.IsDevelopment());
 
 builder.Services.AddCors(options =>
 {
@@ -44,6 +55,9 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
+
+// Map GraphQL endpoint (GET only for queries)
+app.MapGraphQL("/graphql");
 
 app.UseAuthorization();
 
