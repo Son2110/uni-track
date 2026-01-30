@@ -1,7 +1,6 @@
 using PMSS.Infrastructure.DependencyInjection;
 using PMSS.Infrastructure.Middleware;
 using PMSS.API.GraphQL;
-using PMSS.Infrastructure.Data;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
