@@ -41,6 +41,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IClassService, ClassService>();
         services.AddScoped<IClassEnrollmentService, ClassEnrollmentService>();
         services.AddScoped<IProjectService, ProjectService>();
+        services.AddScoped<IProjectMemberService, ProjectMemberService>();
         services.AddScoped<IGithubRepoService, GithubRepoService>();
 
         return services;
