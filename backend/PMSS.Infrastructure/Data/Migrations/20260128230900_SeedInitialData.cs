@@ -116,11 +116,41 @@ namespace PMSS.Infrastructure.Data.Migrations
                     { new Guid("D04C9AF3-2AA7-401A-60CF-08DE5E853DE4"), new Guid("420D7891-3135-40AB-BA33-08DE5E845A69"), "Project Management Support System", "A full-stack application for managing academic projects with GitHub and Jira integration. Built with ASP.NET Core 10 (backend) and React (frontend), following Clean Architecture principles and modern development best practices.", new DateTime(2026, 1, 28, 22, 55, 43, 368), new DateTime(2026, 1, 28, 22, 55, 43, 368) },
                     { new Guid("D4A8F045-BFD7-4A7D-60D0-08DE5E853DE4"), new Guid("10CC372F-7474-4565-BA34-08DE5E845A69"), "Meal Prep Service System", "A comprehensive ASP.NET Core MVC web application for meal preparation and delivery services, built with a clean 3-layer architecture.", new DateTime(2026, 1, 28, 22, 56, 46, 791), new DateTime(2026, 1, 28, 22, 56, 46, 791) }
                 });
+
+            // Seed ProjectMembers
+            migrationBuilder.InsertData(
+                table: "ProjectMembers",
+                columns: new[] { "ProjectId", "UserId", "JoinedAt" },
+                values: new object[,]
+                {
+                    { new Guid("31795272-5296-4199-60CE-08DE5E853DE4"), new Guid("4ECF5DAD-27C5-45FB-C32F-08DE5E7881C3"), new DateTime(2026, 1, 30, 13, 26, 32, 721) }
+                });
+
+            // Seed GithubRepos
+            migrationBuilder.InsertData(
+                table: "GithubRepos",
+                columns: new[] { "GithubRepoId", "ProjectId", "RepoOwnerName", "RepoName", "IsPrivate", "ApiToken", "CreatedAt", "UpdatedAt" },
+                values: new object[,]
+                {
+                    { new Guid("14720EA7-4160-432F-9F24-08DE6003500C"), new Guid("31795272-5296-4199-60CE-08DE5E853DE4"), "haibeu2901", "HIV_System_API", false, "", new DateTime(2026, 1, 30, 13, 27, 27, 730), new DateTime(2026, 1, 30, 13, 27, 27, 730) }
+                });
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // Delete GithubRepos
+            migrationBuilder.DeleteData(
+                table: "GithubRepos",
+                keyColumn: "GithubRepoId",
+                keyValue: new Guid("14720EA7-4160-432F-9F24-08DE6003500C"));
+
+            // Delete ProjectMembers
+            migrationBuilder.DeleteData(
+                table: "ProjectMembers",
+                keyColumns: new[] { "ProjectId", "UserId" },
+                keyValues: new object[] { new Guid("31795272-5296-4199-60CE-08DE5E853DE4"), new Guid("4ECF5DAD-27C5-45FB-C32F-08DE5E7881C3") });
+
             // Delete Projects
             migrationBuilder.DeleteData(
                 table: "Projects",
