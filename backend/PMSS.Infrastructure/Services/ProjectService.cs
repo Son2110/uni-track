@@ -90,7 +90,7 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             if (classEntity == null)
                 return ApiResponse<ProjectDto>.ErrorResponse("Class not found");
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             var project = new Project
             {
                 ClassId = dto.ClassId,
@@ -122,7 +122,7 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
 
             project.Name = dto.Name;
             project.Description = dto.Description;
-            project.UpdatedAt = DateTime.UtcNow;
+            project.UpdatedAt = DateTime.Now;
 
             unitOfWork.Projects.Update(project);
             await unitOfWork.SaveChangesAsync();
@@ -295,7 +295,7 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
     {
         foreach (var week in contributor.Weeks)
         {
-            var weekDate = DateTimeOffset.FromUnixTimeSeconds(week.Timestamp).UtcDateTime;
+            var weekDate = DateTimeOffset.FromUnixTimeSeconds(week.Timestamp).DateTime;
             var existingWeek = stats.WeeklyActivity.FirstOrDefault(w => w.WeekStart.Date == weekDate.Date);
 
             if (existingWeek != null)
@@ -325,7 +325,7 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
     private static Dictionary<long, int> FilterCommitActivityBySemester(Dictionary<long, int> allCommitActivity, Semester semester)
     {
         return allCommitActivity
-            .Where(kvp => IsWithinSemesterPeriod(DateTimeOffset.FromUnixTimeSeconds(kvp.Key).UtcDateTime, semester))
+            .Where(kvp => IsWithinSemesterPeriod(DateTimeOffset.FromUnixTimeSeconds(kvp.Key).DateTime, semester))
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     }
 
@@ -416,7 +416,7 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             .OrderBy(kvp => kvp.Key)
             .Select(kvp =>
             {
-                var weekStart = DateTimeOffset.FromUnixTimeSeconds(kvp.Key).UtcDateTime;
+                var weekStart = DateTimeOffset.FromUnixTimeSeconds(kvp.Key).DateTime;
                 return new WeeklyCommitDto
                 {
                     WeekStart = weekStart,
@@ -446,9 +446,6 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             Contributors = [.. contributorStats.Values.OrderByDescending(c => c.TotalCommits)]
         };
     }
-
-
-
 
     private static IQueryable<Project> ApplySorting(IQueryable<Project> query, string? sortBy, bool descending)
     {

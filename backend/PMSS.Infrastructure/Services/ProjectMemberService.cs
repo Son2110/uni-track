@@ -127,7 +127,7 @@ public class ProjectMemberService : IProjectMemberService
             {
                 ProjectId = dto.ProjectId,
                 UserId = dto.UserId,
-                JoinedAt = DateTime.UtcNow
+                JoinedAt = DateTime.Now
             };
 
             await _unitOfWork.ProjectMembers.AddAsync(projectMember);
