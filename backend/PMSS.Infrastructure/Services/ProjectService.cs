@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.GithubRepo;
@@ -8,7 +9,7 @@ using PMSS.Domain.Entities;
 
 namespace PMSS.Infrastructure.Services;
 
-public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiService, ILogger<ProjectService> logger) : IProjectService
+public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiService, ILogger<ProjectService> logger, IMapper mapper) : IProjectService
 {
     private record ProjectData(Project Project, Semester Semester, List<GithubRepo> Repos, List<RepoContributor> Contributors, List<User> Users);
 
@@ -28,12 +29,13 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             var items = query
                 .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
                 .Take(filterParams.PageSize)
-                .Select(MapToDto)
                 .ToList();
+
+            var itemDtos = mapper.Map<List<ProjectDto>>(items);
 
             var result = new PagedResult<ProjectDto>
             {
-                Items = items,
+                Items = itemDtos,
                 TotalCount = totalCount,
                 PageNumber = filterParams.PageNumber,
                 PageSize = filterParams.PageSize
@@ -72,7 +74,7 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             var project = await unitOfWork.Projects.GetByIdAsync(id);
             return project == null
                 ? ApiResponse<ProjectDto>.ErrorResponse("Project not found")
-                : ApiResponse<ProjectDto>.SuccessResponse(MapToDto(project));
+                : ApiResponse<ProjectDto>.SuccessResponse(mapper.Map<ProjectDto>(project));
         }
         catch (Exception ex)
         {
@@ -102,7 +104,7 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             await unitOfWork.SaveChangesAsync();
 
             project = await unitOfWork.Projects.GetByIdAsync(project.ProjectId);
-            return ApiResponse<ProjectDto>.SuccessResponse(MapToDto(project!), "Project created successfully");
+            return ApiResponse<ProjectDto>.SuccessResponse(mapper.Map<ProjectDto>(project!), "Project created successfully");
         }
         catch (Exception ex)
         {
@@ -125,7 +127,7 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             unitOfWork.Projects.Update(project);
             await unitOfWork.SaveChangesAsync();
 
-            return ApiResponse<ProjectDto>.SuccessResponse(MapToDto(project), "Project updated successfully");
+            return ApiResponse<ProjectDto>.SuccessResponse(mapper.Map<ProjectDto>(project), "Project updated successfully");
         }
         catch (Exception ex)
         {
@@ -447,22 +449,6 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
 
 
 
-
-    private static ProjectDto MapToDto(Project project)
-    {
-        return new ProjectDto
-        {
-            ProjectId = project.ProjectId,
-            ClassId = project.ClassId,
-            ClassName = $"{project.Class?.Course?.Code ?? ""} - Section {project.Class?.ClassCode ?? ""}",
-            CourseCode = project.Class?.Course?.Code ?? string.Empty,
-            CourseName = project.Class?.Course?.Name ?? string.Empty,
-            Name = project.Name,
-            Description = project.Description,
-            CreatedAt = project.CreatedAt,
-            UpdatedAt = project.UpdatedAt
-        };
-    }
 
     private static IQueryable<Project> ApplySorting(IQueryable<Project> query, string? sortBy, bool descending)
     {

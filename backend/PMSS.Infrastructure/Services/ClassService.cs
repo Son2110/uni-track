@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Class;
 using PMSS.Application.DTOs.Common;
@@ -11,11 +12,13 @@ public class ClassService : IClassService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ClassService> _logger;
+    private readonly IMapper _mapper;
 
-    public ClassService(IUnitOfWork unitOfWork, ILogger<ClassService> logger)
+    public ClassService(IUnitOfWork unitOfWork, ILogger<ClassService> logger, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _mapper = mapper;
     }
 
     public async Task<ApiResponse<PagedResult<ClassDto>>> GetAllClassesAsync(ClassFilterParams filterParams)
@@ -46,12 +49,13 @@ public class ClassService : IClassService
             var items = query
                 .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
                 .Take(filterParams.PageSize)
-                .Select(c => MapToDto(c))
                 .ToList();
+
+            var itemDtos = _mapper.Map<List<ClassDto>>(items);
 
             var result = new PagedResult<ClassDto>
             {
-                Items = items,
+                Items = itemDtos,
                 TotalCount = totalCount,
                 PageNumber = filterParams.PageNumber,
                 PageSize = filterParams.PageSize
@@ -79,7 +83,7 @@ public class ClassService : IClassService
                 return ApiResponse<ClassDto>.ErrorResponse("Class not found");
             }
 
-            return ApiResponse<ClassDto>.SuccessResponse(MapToDto(classEntity));
+            return ApiResponse<ClassDto>.SuccessResponse(_mapper.Map<ClassDto>(classEntity));
         }
         catch (Exception ex)
         {
@@ -95,7 +99,7 @@ public class ClassService : IClassService
             _logger.LogInformation("Getting classes by teacher id: {TeacherId}", teacherId);
 
             var classes = await _unitOfWork.Classes.GetClassesByTeacherIdAsync(teacherId);
-            var classDtos = classes.Select(MapToDto).ToList();
+            var classDtos = _mapper.Map<List<ClassDto>>(classes);
 
             return ApiResponse<IEnumerable<ClassDto>>.SuccessResponse(classDtos);
         }
@@ -113,7 +117,7 @@ public class ClassService : IClassService
             _logger.LogInformation("Getting classes by semester id: {SemesterId}", semesterId);
 
             var classes = await _unitOfWork.Classes.GetClassesBySemesterIdAsync(semesterId);
-            var classDtos = classes.Select(MapToDto).ToList();
+            var classDtos = _mapper.Map<List<ClassDto>>(classes);
 
             return ApiResponse<IEnumerable<ClassDto>>.SuccessResponse(classDtos);
         }
@@ -131,7 +135,7 @@ public class ClassService : IClassService
             _logger.LogInformation("Getting classes by course id: {CourseId}", courseId);
 
             var classes = await _unitOfWork.Classes.GetClassesByCourseIdAsync(courseId);
-            var classDtos = classes.Select(MapToDto).ToList();
+            var classDtos = _mapper.Map<List<ClassDto>>(classes);
 
             return ApiResponse<IEnumerable<ClassDto>>.SuccessResponse(classDtos);
         }
@@ -199,7 +203,7 @@ public class ClassService : IClassService
             classEntity = await _unitOfWork.Classes.GetByIdWithDetailsAsync(classEntity.ClassId);
             _logger.LogInformation("Class created successfully: {ClassId}", classEntity!.ClassId);
 
-            return ApiResponse<ClassDto>.SuccessResponse(MapToDto(classEntity), "Class created successfully");
+            return ApiResponse<ClassDto>.SuccessResponse(_mapper.Map<ClassDto>(classEntity), "Class created successfully");
         }
         catch (Exception ex)
         {
@@ -239,7 +243,7 @@ public class ClassService : IClassService
             classEntity = await _unitOfWork.Classes.GetByIdWithDetailsAsync(id);
             _logger.LogInformation("Class updated successfully: {ClassId}", id);
 
-            return ApiResponse<ClassDto>.SuccessResponse(MapToDto(classEntity!), "Class updated successfully");
+            return ApiResponse<ClassDto>.SuccessResponse(_mapper.Map<ClassDto>(classEntity!), "Class updated successfully");
         }
         catch (Exception ex)
         {
@@ -272,24 +276,6 @@ public class ClassService : IClassService
             _logger.LogError(ex, "Error deleting class: {ClassId}", id);
             return ApiResponse<bool>.ErrorResponse("Error deleting class", ex.Message);
         }
-    }
-
-    private static ClassDto MapToDto(Class classEntity)
-    {
-        return new ClassDto
-        {
-            ClassId = classEntity.ClassId,
-            SemesterId = classEntity.SemesterId,
-            SemesterName = classEntity.Semester?.Name ?? string.Empty,
-            CourseId = classEntity.CourseId,
-            CourseCode = classEntity.Course?.Code ?? string.Empty,
-            CourseName = classEntity.Course?.Name ?? string.Empty,
-            ClassCode = classEntity.ClassCode,
-            TeacherId = classEntity.TeacherId,
-            TeacherName = classEntity.Teacher?.Name ?? string.Empty,
-            CreatedAt = classEntity.CreatedAt,
-            UpdatedAt = classEntity.UpdatedAt
-        };
     }
 
     private static IQueryable<Class> ApplySorting(IQueryable<Class> query, string? sortBy, bool descending)

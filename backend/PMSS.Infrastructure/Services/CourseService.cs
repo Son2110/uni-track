@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.Course;
@@ -11,11 +12,13 @@ public class CourseService : ICourseService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CourseService> _logger;
+    private readonly IMapper _mapper;
 
-    public CourseService(IUnitOfWork unitOfWork, ILogger<CourseService> logger)
+    public CourseService(IUnitOfWork unitOfWork, ILogger<CourseService> logger, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _mapper = mapper;
     }
 
     public async Task<ApiResponse<PagedResult<CourseDto>>> GetAllCoursesAsync(CourseFilterParams filterParams)
@@ -43,12 +46,13 @@ public class CourseService : ICourseService
             var items = query
                 .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
                 .Take(filterParams.PageSize)
-                .Select(c => MapToDto(c))
                 .ToList();
+
+            var itemDtos = _mapper.Map<List<CourseDto>>(items);
 
             var result = new PagedResult<CourseDto>
             {
-                Items = items,
+                Items = itemDtos,
                 TotalCount = totalCount,
                 PageNumber = filterParams.PageNumber,
                 PageSize = filterParams.PageSize
@@ -70,7 +74,7 @@ public class CourseService : ICourseService
             if (course == null)
                 return ApiResponse<CourseDto>.ErrorResponse("Course not found");
 
-            return ApiResponse<CourseDto>.SuccessResponse(MapToDto(course));
+            return ApiResponse<CourseDto>.SuccessResponse(_mapper.Map<CourseDto>(course));
         }
         catch (Exception ex)
         {
@@ -99,7 +103,7 @@ public class CourseService : ICourseService
             await _unitOfWork.SaveChangesAsync();
 
             course = await _unitOfWork.Courses.GetByIdAsync(course.CourseId);
-            return ApiResponse<CourseDto>.SuccessResponse(MapToDto(course!), "Course created successfully");
+            return ApiResponse<CourseDto>.SuccessResponse(_mapper.Map<CourseDto>(course!), "Course created successfully");
         }
         catch (Exception ex)
         {
@@ -127,7 +131,7 @@ public class CourseService : ICourseService
             _unitOfWork.Courses.Update(course);
             await _unitOfWork.SaveChangesAsync();
 
-            return ApiResponse<CourseDto>.SuccessResponse(MapToDto(course), "Course updated successfully");
+            return ApiResponse<CourseDto>.SuccessResponse(_mapper.Map<CourseDto>(course), "Course updated successfully");
         }
         catch (Exception ex)
         {
@@ -152,19 +156,6 @@ public class CourseService : ICourseService
         {
             return ApiResponse<bool>.ErrorResponse("Error deleting course", ex.Message);
         }
-    }
-
-    private static CourseDto MapToDto(Course course)
-    {
-        return new CourseDto
-        {
-            CourseId = course.CourseId,
-            Code = course.Code,
-            Name = course.Name,
-            Description = course.Description,
-            CreatedAt = course.CreatedAt,
-            UpdatedAt = course.UpdatedAt
-        };
     }
 
     private static IQueryable<Course> ApplySorting(IQueryable<Course> query, string? sortBy, bool descending)
