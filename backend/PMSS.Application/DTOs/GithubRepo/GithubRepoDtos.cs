@@ -59,6 +59,9 @@ public class ProjectGithubContributionDto
     public string ProjectName { get; set; } = string.Empty;
     public DateTime SemesterStartDate { get; set; }
     public DateTime SemesterEndDate { get; set; }
+    public int TotalCommitsInSemester { get; set; }
+    public int TotalAdditionsInSemester { get; set; }
+    public int TotalDeletionsInSemester { get; set; }
     public List<RepoContributionDto> Repositories { get; set; } = new();
     public List<WeeklyCommitDto> OverallCommitsOverTime { get; set; } = new();
     public List<ContributorStatsDto> Contributors { get; set; } = new();

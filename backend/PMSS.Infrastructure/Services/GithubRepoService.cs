@@ -11,11 +11,13 @@ public class GithubRepoService : IGithubRepoService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<GithubRepoService> _logger;
+    private readonly IGithubApiService _githubApiService;
 
-    public GithubRepoService(IUnitOfWork unitOfWork, ILogger<GithubRepoService> logger)
+    public GithubRepoService(IUnitOfWork unitOfWork, ILogger<GithubRepoService> logger, IGithubApiService githubApiService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _githubApiService = githubApiService;
     }
 
     public async Task<ApiResponse<PagedResult<GithubRepoDto>>> GetAllReposAsync(GithubRepoFilterParams filterParams)
@@ -25,7 +27,7 @@ public class GithubRepoService : IGithubRepoService
             _logger.LogInformation("Getting all Github repos with filters: ProjectId={ProjectId}, CourseId={CourseId}, UserId={UserId}",
                 filterParams.ProjectId, filterParams.CourseId, filterParams.UserId);
 
-            var query = (await _unitOfWork.GithubRepos.GetAllAsync()).AsQueryable();
+            var query = (await _unitOfWork.GithubRepos.GetAllWithDetailsAsync()).AsQueryable();
 
             if (filterParams.ProjectId.HasValue)
                 query = query.Where(gr => gr.ProjectId == filterParams.ProjectId.Value);
@@ -354,14 +356,157 @@ public class GithubRepoService : IGithubRepoService
             var canManage = await CanUserManageProjectAsync(repo.ProjectId, userId);
             return ApiResponse<bool>.SuccessResponse(canManage);
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking user permission for repo");
-            return ApiResponse<bool>.ErrorResponse("Error checking permissions", ex.Message);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking user permission for repo");
+                return ApiResponse<bool>.ErrorResponse("Error checking permissions", ex.Message);
+            }
         }
-    }
 
-    private async Task<bool> CanUserManageProjectAsync(Guid projectId, Guid userId)
+        public async Task<ApiResponse<ProjectGithubContributionDto>> GetGithubContributionsAsync(Guid projectId)
+        {
+            try
+            {
+                _logger.LogInformation("Getting Github contributions for project: {ProjectId}", projectId);
+
+                var repos = (await _unitOfWork.GithubRepos.GetReposByProjectIdWithSemesterAsync(projectId)).ToList();
+                if (!repos.Any())
+                    return ApiResponse<ProjectGithubContributionDto>.ErrorResponse("No GitHub repositories found for this project");
+
+                var firstRepo = repos.First();
+                var project = firstRepo.Project;
+                var semester = project.Class.Semester;
+
+                var semesterStartDate = semester.StartDate;
+                var semesterEndDate = semester.EndDate;
+
+                var result = new ProjectGithubContributionDto
+                {
+                    ProjectId = projectId,
+                    ProjectName = project.Name,
+                    SemesterStartDate = semesterStartDate,
+                    SemesterEndDate = semesterEndDate,
+                    Repositories = repos.Select(r => new RepoContributionDto
+                    {
+                        GithubRepoId = r.GithubRepoId,
+                        RepoOwnerName = r.RepoOwnerName,
+                        RepoName = r.RepoName,
+                        RepoUrl = $"https://github.com/{r.RepoOwnerName}/{r.RepoName}"
+                    }).ToList()
+                };
+
+                var allContributorStats = new Dictionary<string, ContributorStatsDto>();
+                var weeklyCommitsAggregated = new Dictionary<DateTime, int>();
+
+                foreach (var repo in repos)
+                {
+                    var contributorStats = await _githubApiService.GetRepositoryContributorStatsAsync(
+                        repo.RepoOwnerName,
+                        repo.RepoName,
+                        repo.ApiToken);
+
+                    if (contributorStats?.Contributors != null)
+                    {
+                        foreach (var contributor in contributorStats.Contributors)
+                        {
+                            var contributorKey = contributor.Login.ToLowerInvariant();
+
+                            if (!allContributorStats.TryGetValue(contributorKey, out var existingStats))
+                            {
+                                var repoContributor = repo.RepoContributors
+                                    .FirstOrDefault(rc => rc.GithubUsername.Equals(contributor.Login, StringComparison.OrdinalIgnoreCase));
+
+                                existingStats = new ContributorStatsDto
+                                {
+                                    GithubUsername = contributor.Login,
+                                    GithubEmail = contributor.Email ?? repoContributor?.GithubEmail,
+                                    UserId = repoContributor?.UserId,
+                                    UserFullName = repoContributor?.User?.Name,
+                                    TotalCommits = 0,
+                                    TotalAdditions = 0,
+                                    TotalDeletions = 0,
+                                    WeeklyActivity = []
+                                };
+                                allContributorStats[contributorKey] = existingStats;
+                            }
+
+                            var weeklyActivityMap = existingStats.WeeklyActivity
+                                .ToDictionary(w => w.WeekStart, w => w);
+
+                            foreach (var week in contributor.Weeks)
+                            {
+                                var weekStart = DateTimeOffset.FromUnixTimeSeconds(week.Timestamp).UtcDateTime.Date;
+                                var weekEnd = weekStart.AddDays(6);
+
+                                if (weekStart > semesterEndDate || weekEnd < semesterStartDate)
+                                    continue;
+
+                                existingStats.TotalCommits += week.Commits;
+                                existingStats.TotalAdditions += week.Additions;
+                                existingStats.TotalDeletions += week.Deletions;
+
+                                if (weeklyActivityMap.TryGetValue(weekStart, out var existingWeek))
+                                {
+                                    existingWeek.Commits += week.Commits;
+                                    existingWeek.Additions += week.Additions;
+                                    existingWeek.Deletions += week.Deletions;
+                                }
+                                else
+                                {
+                                    var newWeekActivity = new WeeklyContributorActivityDto
+                                    {
+                                        WeekStart = weekStart,
+                                        WeekEnd = weekEnd,
+                                        Commits = week.Commits,
+                                        Additions = week.Additions,
+                                        Deletions = week.Deletions
+                                    };
+                                    existingStats.WeeklyActivity.Add(newWeekActivity);
+                                    weeklyActivityMap[weekStart] = newWeekActivity;
+                                }
+
+                                if (weeklyCommitsAggregated.TryGetValue(weekStart, out var existingCommits))
+                                {
+                                    weeklyCommitsAggregated[weekStart] = existingCommits + week.Commits;
+                                }
+                                else
+                                {
+                                    weeklyCommitsAggregated[weekStart] = week.Commits;
+                                }
+                            }
+
+                            existingStats.WeeklyActivity = [.. existingStats.WeeklyActivity.OrderBy(w => w.WeekStart)];
+                        }
+                    }
+                }
+
+                result.Contributors = [.. allContributorStats.Values.OrderByDescending(c => c.TotalCommits)];
+                result.TotalCommitsInSemester = result.Contributors.Sum(c => c.TotalCommits);
+                result.TotalAdditionsInSemester = result.Contributors.Sum(c => c.TotalAdditions);
+                result.TotalDeletionsInSemester = result.Contributors.Sum(c => c.TotalDeletions);
+
+                result.OverallCommitsOverTime = weeklyCommitsAggregated
+                    .OrderBy(kvp => kvp.Key)
+                    .Select(kvp => new WeeklyCommitDto
+                    {
+                        WeekStart = kvp.Key,
+                        WeekEnd = kvp.Key.AddDays(6),
+                        CommitCount = kvp.Value
+                    })
+                    .ToList();
+
+                _logger.LogInformation("Successfully retrieved Github contributions for project: {ProjectId}", projectId);
+
+                return ApiResponse<ProjectGithubContributionDto>.SuccessResponse(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving Github contributions for project: {ProjectId}", projectId);
+                return ApiResponse<ProjectGithubContributionDto>.ErrorResponse("Error retrieving Github contributions", ex.Message);
+            }
+        }
+
+        private async Task<bool> CanUserManageProjectAsync(Guid projectId, Guid userId)
     {
         var project = await _unitOfWork.Projects.GetByIdAsync(projectId);
         if (project == null)
