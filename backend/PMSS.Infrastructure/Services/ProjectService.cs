@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.GithubRepo;
@@ -9,49 +8,27 @@ using PMSS.Domain.Entities;
 
 namespace PMSS.Infrastructure.Services;
 
-public class ProjectService : IProjectService
+public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiService, ILogger<ProjectService> logger) : IProjectService
 {
-    private readonly IUnitOfWork _unitOfWork;
-    private readonly IGithubApiService _githubApiService;
-    private readonly ILogger<ProjectService> _logger;
-
-    public ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiService, ILogger<ProjectService> logger)
-    {
-        _unitOfWork = unitOfWork;
-        _githubApiService = githubApiService;
-        _logger = logger;
-    }
+    private record ProjectData(Project Project, Semester Semester, List<GithubRepo> Repos, List<RepoContributor> Contributors, List<User> Users);
 
     public async Task<ApiResponse<PagedResult<ProjectDto>>> GetAllProjectsAsync(ProjectFilterParams filterParams)
     {
         try
         {
-            _logger.LogInformation("Getting all projects with filters: ClassId={ClassId}, PageNumber={PageNumber}", 
+            logger.LogInformation("Getting all projects with filters: ClassId={ClassId}, PageNumber={PageNumber}",
                 filterParams.ClassId, filterParams.PageNumber);
 
-            var query = (await _unitOfWork.Projects.GetAllAsync()).AsQueryable();
-
-            if (filterParams.ClassId.HasValue)
-                query = query.Where(p => p.ClassId == filterParams.ClassId.Value);
-
-            if (filterParams.CourseId.HasValue)
-                query = query.Where(p => p.Class.CourseId == filterParams.CourseId.Value);
-
-            if (filterParams.TeacherId.HasValue)
-                query = query.Where(p => p.Class.TeacherId == filterParams.TeacherId.Value);
-
-            if (!string.IsNullOrWhiteSpace(filterParams.SearchTerm))
-                query = query.Where(p => p.Name.Contains(filterParams.SearchTerm) || 
-                    (p.Description != null && p.Description.Contains(filterParams.SearchTerm)));
+            var query = (await unitOfWork.Projects.GetAllAsync()).AsQueryable();
+            query = ApplyFilters(query, filterParams);
 
             var totalCount = query.Count();
-
             query = ApplySorting(query, filterParams.SortBy, filterParams.SortDescending);
 
             var items = query
                 .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
                 .Take(filterParams.PageSize)
-                .Select(p => MapToDto(p))
+                .Select(MapToDto)
                 .ToList();
 
             var result = new PagedResult<ProjectDto>
@@ -70,15 +47,32 @@ public class ProjectService : IProjectService
         }
     }
 
+    private static IQueryable<Project> ApplyFilters(IQueryable<Project> query, ProjectFilterParams filterParams)
+    {
+        if (filterParams.ClassId.HasValue)
+            query = query.Where(p => p.ClassId == filterParams.ClassId.Value);
+
+        if (filterParams.CourseId.HasValue)
+            query = query.Where(p => p.Class.CourseId == filterParams.CourseId.Value);
+
+        if (filterParams.TeacherId.HasValue)
+            query = query.Where(p => p.Class.TeacherId == filterParams.TeacherId.Value);
+
+        if (!string.IsNullOrWhiteSpace(filterParams.SearchTerm))
+            query = query.Where(p => p.Name.Contains(filterParams.SearchTerm) ||
+                (p.Description != null && p.Description.Contains(filterParams.SearchTerm)));
+
+        return query;
+    }
+
     public async Task<ApiResponse<ProjectDto>> GetProjectByIdAsync(Guid id)
     {
         try
         {
-            var project = await _unitOfWork.Projects.GetByIdAsync(id);
-            if (project == null)
-                return ApiResponse<ProjectDto>.ErrorResponse("Project not found");
-
-            return ApiResponse<ProjectDto>.SuccessResponse(MapToDto(project));
+            var project = await unitOfWork.Projects.GetByIdAsync(id);
+            return project == null
+                ? ApiResponse<ProjectDto>.ErrorResponse("Project not found")
+                : ApiResponse<ProjectDto>.SuccessResponse(MapToDto(project));
         }
         catch (Exception ex)
         {
@@ -90,23 +84,24 @@ public class ProjectService : IProjectService
     {
         try
         {
-            var classEntity = await _unitOfWork.Classes.GetByIdAsync(dto.ClassId);
+            var classEntity = await unitOfWork.Classes.GetByIdAsync(dto.ClassId);
             if (classEntity == null)
                 return ApiResponse<ProjectDto>.ErrorResponse("Class not found");
 
+            var now = DateTime.UtcNow;
             var project = new Project
             {
                 ClassId = dto.ClassId,
                 Name = dto.Name,
                 Description = dto.Description,
-                CreatedAt = DateTime.Now,
-                UpdatedAt = DateTime.Now
+                CreatedAt = now,
+                UpdatedAt = now
             };
 
-            await _unitOfWork.Projects.AddAsync(project);
-            await _unitOfWork.SaveChangesAsync();
+            await unitOfWork.Projects.AddAsync(project);
+            await unitOfWork.SaveChangesAsync();
 
-            project = await _unitOfWork.Projects.GetByIdAsync(project.ProjectId);
+            project = await unitOfWork.Projects.GetByIdAsync(project.ProjectId);
             return ApiResponse<ProjectDto>.SuccessResponse(MapToDto(project!), "Project created successfully");
         }
         catch (Exception ex)
@@ -119,16 +114,16 @@ public class ProjectService : IProjectService
     {
         try
         {
-            var project = await _unitOfWork.Projects.GetByIdAsync(id);
+            var project = await unitOfWork.Projects.GetByIdAsync(id);
             if (project == null)
                 return ApiResponse<ProjectDto>.ErrorResponse("Project not found");
 
             project.Name = dto.Name;
             project.Description = dto.Description;
-            project.UpdatedAt = DateTime.Now;
+            project.UpdatedAt = DateTime.UtcNow;
 
-            _unitOfWork.Projects.Update(project);
-            await _unitOfWork.SaveChangesAsync();
+            unitOfWork.Projects.Update(project);
+            await unitOfWork.SaveChangesAsync();
 
             return ApiResponse<ProjectDto>.SuccessResponse(MapToDto(project), "Project updated successfully");
         }
@@ -142,12 +137,12 @@ public class ProjectService : IProjectService
     {
         try
         {
-            var project = await _unitOfWork.Projects.GetByIdAsync(id);
+            var project = await unitOfWork.Projects.GetByIdAsync(id);
             if (project == null)
                 return ApiResponse<bool>.ErrorResponse("Project not found");
 
-            _unitOfWork.Projects.Remove(project);
-            await _unitOfWork.SaveChangesAsync();
+            unitOfWork.Projects.Remove(project);
+            await unitOfWork.SaveChangesAsync();
 
             return ApiResponse<bool>.SuccessResponse(true, "Project deleted successfully");
         }
@@ -165,78 +160,68 @@ public class ProjectService : IProjectService
             if (!projectDataResult.IsSuccess)
                 return ApiResponse<ProjectGithubContributionDto>.ErrorResponse(projectDataResult.ErrorMessage!);
 
-            var data = projectDataResult.Data!.Value;
-            var project = data.Project;
-            var semester = data.Semester;
-            var githubRepos = data.Repos;
-            var contributors = data.Contributors;
-            var users = data.Users;
+            var (project, semester, githubRepos, contributors, users) = projectDataResult.Data!;
 
-            _logger.LogInformation("Fetching GitHub statistics for project {ProjectId} across {RepoCount} repositories. " +
-                "Semester period: {SemesterStart} to {SemesterEnd}",
+            logger.LogInformation(
+                "Fetching GitHub statistics for project {ProjectId} across {RepoCount} repositories. Semester: {SemesterStart} to {SemesterEnd}",
                 projectId, githubRepos.Count, semester.StartDate, semester.EndDate);
 
-            // Fetch all GitHub data without semester filtering first
             var (allCommitActivity, allContributorStats) = await FetchAllGitHubDataAsync(githubRepos, contributors, users);
 
-            _logger.LogInformation("Raw GitHub data fetched: {CommitWeeks} commit weeks, {ContributorCount} contributors",
+            logger.LogDebug("Raw GitHub data: {CommitWeeks} commit weeks, {ContributorCount} contributors",
                 allCommitActivity.Count, allContributorStats.Count);
 
-            // Apply semester filtering
             var filteredCommitActivity = FilterCommitActivityBySemester(allCommitActivity, semester);
             var filteredContributorStats = FilterContributorStatsBySemester(allContributorStats, semester);
 
-            _logger.LogInformation("After semester filtering: {CommitWeeks} commit weeks, {ContributorCount} contributors",
+            logger.LogDebug("After filtering: {CommitWeeks} commit weeks, {ContributorCount} contributors",
                 filteredCommitActivity.Count, filteredContributorStats.Count);
 
             SortContributorWeeklyActivity(filteredContributorStats);
 
             var response = BuildContributionResponse(project, semester, githubRepos, filteredCommitActivity, filteredContributorStats);
 
-            _logger.LogInformation("Successfully aggregated GitHub contributions for project {ProjectId}: " +
-                "{TotalCommits} commits, {TotalAdditions} additions, {TotalDeletions} deletions",
+            logger.LogInformation(
+                "GitHub contributions for project {ProjectId}: {TotalCommits} commits, {TotalAdditions} additions, {TotalDeletions} deletions",
                 projectId, response.TotalCommitsInSemester, response.TotalAdditionsInSemester, response.TotalDeletionsInSemester);
 
             return ApiResponse<ProjectGithubContributionDto>.SuccessResponse(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving project GitHub contributions for project {ProjectId}", projectId);
+            logger.LogError(ex, "Error retrieving GitHub contributions for project {ProjectId}", projectId);
             return ApiResponse<ProjectGithubContributionDto>.ErrorResponse("Error retrieving project GitHub contributions", ex.Message);
         }
     }
 
-    private async Task<(bool IsSuccess, string? ErrorMessage, (Project Project, Semester Semester, List<GithubRepo> Repos, List<RepoContributor> Contributors, List<User> Users)? Data)> GetProjectDataAsync(Guid projectId)
+    private async Task<(bool IsSuccess, string? ErrorMessage, ProjectData? Data)> GetProjectDataAsync(Guid projectId)
     {
-        var projects = await _unitOfWork.Projects.GetAllAsync();
-        var project = projects.FirstOrDefault(p => p.ProjectId == projectId);
+        var project = await unitOfWork.Projects.FirstOrDefaultAsync(p => p.ProjectId == projectId);
         if (project == null)
             return (false, "Project not found", null);
 
-        var classes = await _unitOfWork.Classes.GetAllAsync();
-        var classEntity = classes.FirstOrDefault(c => c.ClassId == project.ClassId);
+        var classEntity = await unitOfWork.Classes.FirstOrDefaultAsync(c => c.ClassId == project.ClassId);
         if (classEntity == null)
             return (false, "Class not found", null);
 
-        var semesters = await _unitOfWork.Semesters.GetAllAsync();
-        var semester = semesters.FirstOrDefault(s => s.SemesterId == classEntity.SemesterId);
+        var semester = await unitOfWork.Semesters.FirstOrDefaultAsync(s => s.SemesterId == classEntity.SemesterId);
         if (semester == null)
             return (false, "Semester not found", null);
 
-        var allRepos = await _unitOfWork.GithubRepos.GetAllAsync();
+        var allRepos = await unitOfWork.GithubRepos.GetAllAsync();
         var githubRepos = allRepos.Where(r => r.ProjectId == projectId).ToList();
-        if (!githubRepos.Any())
+        if (githubRepos.Count == 0)
             return (false, "No GitHub repositories found for this project", null);
 
-        var allContributors = await _unitOfWork.RepoContributors.GetAllAsync();
-        var repoIds = githubRepos.Select(r => r.GithubRepoId).ToList();
+        var repoIds = githubRepos.Select(r => r.GithubRepoId).ToHashSet();
+        var allContributors = await unitOfWork.RepoContributors.GetAllAsync();
         var contributors = allContributors.Where(c => repoIds.Contains(c.GithubRepoId)).ToList();
 
-        var allUsers = await _unitOfWork.Users.GetAllAsync();
-        var userIds = contributors.Where(c => c.UserId.HasValue).Select(c => c.UserId!.Value).ToList();
+        var userIds = contributors.Where(c => c.UserId.HasValue).Select(c => c.UserId!.Value).ToHashSet();
+        var allUsers = await unitOfWork.Users.GetAllAsync();
         var users = allUsers.Where(u => userIds.Contains(u.UserId)).ToList();
 
-        return (true, null, (project, semester, githubRepos, contributors, users));
+        return (true, null, new ProjectData(project, semester, githubRepos, contributors, users));
     }
 
     private async Task<(Dictionary<long, int> CommitActivity, Dictionary<string, ContributorStatsDto> ContributorStats)> FetchAllGitHubDataAsync(
@@ -245,85 +230,72 @@ public class ProjectService : IProjectService
         List<User> users)
     {
         var allCommitActivity = new Dictionary<long, int>();
-        var contributorStatsMap = new Dictionary<string, ContributorStatsDto>();
+        var contributorStatsMap = new Dictionary<string, ContributorStatsDto>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var repo in githubRepos)
         {
             try
             {
-                _logger.LogDebug("Fetching data from GitHub API for repo: {Owner}/{Repo}",
-                    repo.RepoOwnerName, repo.RepoName);
-
-                await AggregateAllCommitActivityAsync(repo, allCommitActivity);
-                await AggregateAllContributorStatsAsync(repo, contributors, users, contributorStatsMap);
+                logger.LogDebug("Fetching GitHub data for repo: {Owner}/{Repo}", repo.RepoOwnerName, repo.RepoName);
+                await AggregateCommitActivityAsync(repo, allCommitActivity);
+                await AggregateContributorStatsAsync(repo, contributors, users, contributorStatsMap);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to fetch GitHub data for repo {Owner}/{Repo}",
-                    repo.RepoOwnerName, repo.RepoName);
+                logger.LogWarning(ex, "Failed to fetch GitHub data for repo {Owner}/{Repo}", repo.RepoOwnerName, repo.RepoName);
             }
         }
 
         return (allCommitActivity, contributorStatsMap);
     }
 
-    private async Task AggregateAllCommitActivityAsync(GithubRepo repo, Dictionary<long, int> allCommitActivity)
+    private async Task AggregateCommitActivityAsync(GithubRepo repo, Dictionary<long, int> commitActivity)
     {
-        var commitActivity = await _githubApiService.GetRepositoryCommitActivityAsync(
+        var repoActivity = await githubApiService.GetRepositoryCommitActivityAsync(
             repo.RepoOwnerName, repo.RepoName, repo.ApiToken);
 
-        if (commitActivity == null || commitActivity.Count == 0)
+        if (repoActivity is not { Count: > 0 })
         {
-            _logger.LogWarning("No commit activity returned from GitHub API for repo {Owner}/{Repo}",
-                repo.RepoOwnerName, repo.RepoName);
+            logger.LogWarning("No commit activity for repo {Owner}/{Repo}", repo.RepoOwnerName, repo.RepoName);
             return;
         }
 
-        _logger.LogDebug("Received {Count} weeks of commit activity for repo {Owner}/{Repo}",
-            commitActivity.Count, repo.RepoOwnerName, repo.RepoName);
-
-        foreach (var activity in commitActivity)
+        foreach (var activity in repoActivity)
         {
-            if (allCommitActivity.TryGetValue(activity.Timestamp, out var existing))
-                allCommitActivity[activity.Timestamp] = existing + activity.Total;
-            else
-                allCommitActivity[activity.Timestamp] = activity.Total;
+            commitActivity.TryGetValue(activity.Timestamp, out var existing);
+            commitActivity[activity.Timestamp] = existing + activity.Total;
         }
     }
 
-    private async Task AggregateAllContributorStatsAsync(
+    private async Task AggregateContributorStatsAsync(
         GithubRepo repo,
         List<RepoContributor> contributors,
         List<User> users,
         Dictionary<string, ContributorStatsDto> contributorStatsMap)
     {
-        var contributorStats = await _githubApiService.GetRepositoryContributorStatsAsync(
+        var repoStats = await githubApiService.GetRepositoryContributorStatsAsync(
             repo.RepoOwnerName, repo.RepoName, repo.ApiToken);
 
-        if (contributorStats?.Contributors == null || contributorStats.Contributors.Count == 0)
+        if (repoStats?.Contributors is not { Count: > 0 })
         {
-            _logger.LogWarning("No contributor stats returned from GitHub API for repo {Owner}/{Repo}",
-                repo.RepoOwnerName, repo.RepoName);
+            logger.LogWarning("No contributor stats for repo {Owner}/{Repo}", repo.RepoOwnerName, repo.RepoName);
             return;
         }
 
-        _logger.LogDebug("Received {Count} contributors for repo {Owner}/{Repo}",
-            contributorStats.Contributors.Count, repo.RepoOwnerName, repo.RepoName);
-
-        foreach (var contributor in contributorStats.Contributors)
+        foreach (var contributor in repoStats.Contributors)
         {
             var stats = GetOrCreateContributorStats(contributor, contributors, users, contributorStatsMap);
-            AggregateAllWeeklyActivity(contributor, stats);
+            AggregateWeeklyActivity(contributor, stats);
         }
     }
 
-    private static void AggregateAllWeeklyActivity(GithubContributor contributor, ContributorStatsDto stats)
+    private static void AggregateWeeklyActivity(GithubContributor contributor, ContributorStatsDto stats)
     {
         foreach (var week in contributor.Weeks)
         {
-            var weekDate = DateTimeOffset.FromUnixTimeSeconds(week.Timestamp).DateTime;
-            
+            var weekDate = DateTimeOffset.FromUnixTimeSeconds(week.Timestamp).UtcDateTime;
             var existingWeek = stats.WeeklyActivity.FirstOrDefault(w => w.WeekStart.Date == weekDate.Date);
+
             if (existingWeek != null)
             {
                 existingWeek.Commits += week.Commits;
@@ -348,57 +320,42 @@ public class ProjectService : IProjectService
         }
     }
 
-    private Dictionary<long, int> FilterCommitActivityBySemester(Dictionary<long, int> allCommitActivity, Semester semester)
+    private static Dictionary<long, int> FilterCommitActivityBySemester(Dictionary<long, int> allCommitActivity, Semester semester)
     {
-        var filtered = new Dictionary<long, int>();
-        
-        foreach (var kvp in allCommitActivity)
-        {
-            var weekDate = DateTimeOffset.FromUnixTimeSeconds(kvp.Key).DateTime;
-            if (IsWithinSemesterPeriod(weekDate, semester))
-            {
-                filtered[kvp.Key] = kvp.Value;
-            }
-        }
-
-        return filtered;
+        return allCommitActivity
+            .Where(kvp => IsWithinSemesterPeriod(DateTimeOffset.FromUnixTimeSeconds(kvp.Key).UtcDateTime, semester))
+            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     }
 
-    private Dictionary<string, ContributorStatsDto> FilterContributorStatsBySemester(
-        Dictionary<string, ContributorStatsDto> allContributorStats, 
+    private static Dictionary<string, ContributorStatsDto> FilterContributorStatsBySemester(
+        Dictionary<string, ContributorStatsDto> allContributorStats,
         Semester semester)
     {
-        var filtered = new Dictionary<string, ContributorStatsDto>();
+        var filtered = new Dictionary<string, ContributorStatsDto>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var kvp in allContributorStats)
+        foreach (var (key, contributor) in allContributorStats)
         {
-            var contributor = kvp.Value;
-            
-            // Filter weekly activity to semester period
             var filteredWeeks = contributor.WeeklyActivity
                 .Where(w => IsWithinSemesterPeriod(w.WeekStart, semester))
                 .ToList();
 
-            if (filteredWeeks.Count > 0 || contributor.WeeklyActivity.Count == 0)
-            {
-                var filteredStats = new ContributorStatsDto
-                {
-                    GithubUsername = contributor.GithubUsername,
-                    GithubEmail = contributor.GithubEmail,
-                    UserId = contributor.UserId,
-                    UserFullName = contributor.UserFullName,
-                    TotalCommits = filteredWeeks.Sum(w => w.Commits),
-                    TotalAdditions = filteredWeeks.Sum(w => w.Additions),
-                    TotalDeletions = filteredWeeks.Sum(w => w.Deletions),
-                    WeeklyActivity = filteredWeeks
-                };
+            if (filteredWeeks.Count == 0 && contributor.WeeklyActivity.Count > 0)
+                continue;
 
-                // Only include contributors with activity in the semester
-                if (filteredStats.TotalCommits > 0 || filteredStats.TotalAdditions > 0 || filteredStats.TotalDeletions > 0)
-                {
-                    filtered[kvp.Key] = filteredStats;
-                }
-            }
+            var filteredStats = new ContributorStatsDto
+            {
+                GithubUsername = contributor.GithubUsername,
+                GithubEmail = contributor.GithubEmail,
+                UserId = contributor.UserId,
+                UserFullName = contributor.UserFullName,
+                TotalCommits = filteredWeeks.Sum(w => w.Commits),
+                TotalAdditions = filteredWeeks.Sum(w => w.Additions),
+                TotalDeletions = filteredWeeks.Sum(w => w.Deletions),
+                WeeklyActivity = filteredWeeks
+            };
+
+            if (filteredStats.TotalCommits > 0 || filteredStats.TotalAdditions > 0 || filteredStats.TotalDeletions > 0)
+                filtered[key] = filteredStats;
         }
 
         return filtered;
@@ -455,11 +412,15 @@ public class ProjectService : IProjectService
     {
         var overallCommitsOverTime = commitActivity
             .OrderBy(kvp => kvp.Key)
-            .Select(kvp => new WeeklyCommitDto
+            .Select(kvp =>
             {
-                WeekStart = DateTimeOffset.FromUnixTimeSeconds(kvp.Key).DateTime,
-                WeekEnd = DateTimeOffset.FromUnixTimeSeconds(kvp.Key).DateTime.AddDays(7),
-                CommitCount = kvp.Value
+                var weekStart = DateTimeOffset.FromUnixTimeSeconds(kvp.Key).UtcDateTime;
+                return new WeeklyCommitDto
+                {
+                    WeekStart = weekStart,
+                    WeekEnd = weekStart.AddDays(7),
+                    CommitCount = kvp.Value
+                };
             })
             .ToList();
 
@@ -483,6 +444,8 @@ public class ProjectService : IProjectService
             Contributors = [.. contributorStats.Values.OrderByDescending(c => c.TotalCommits)]
         };
     }
+
+
 
 
     private static ProjectDto MapToDto(Project project)
