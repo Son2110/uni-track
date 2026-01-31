@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
 
         services.AddHttpClient();
         services.AddScoped<IGithubApiService, GithubApiService>();
+        services.AddScoped<IJiraApiService, JiraApiService>();
 
         services.AddScoped<ISemesterService, SemesterService>();
         services.AddScoped<IUserService, UserService>();
