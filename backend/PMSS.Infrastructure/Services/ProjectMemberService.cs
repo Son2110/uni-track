@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.ProjectMember;
@@ -11,11 +12,13 @@ public class ProjectMemberService : IProjectMemberService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ProjectMemberService> _logger;
+    private readonly IMapper _mapper;
 
-    public ProjectMemberService(IUnitOfWork unitOfWork, ILogger<ProjectMemberService> logger)
+    public ProjectMemberService(IUnitOfWork unitOfWork, ILogger<ProjectMemberService> logger, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _mapper = mapper;
     }
 
     public async Task<ApiResponse<PagedResult<ProjectMemberDto>>> GetAllMembersAsync(ProjectMemberFilterParams filterParams)
@@ -49,12 +52,13 @@ public class ProjectMemberService : IProjectMemberService
             var items = query
                 .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
                 .Take(filterParams.PageSize)
-                .Select(pm => MapToDto(pm))
                 .ToList();
+
+            var itemDtos = _mapper.Map<List<ProjectMemberDto>>(items);
 
             var result = new PagedResult<ProjectMemberDto>
             {
-                Items = items,
+                Items = itemDtos,
                 TotalCount = totalCount,
                 PageNumber = filterParams.PageNumber,
                 PageSize = filterParams.PageSize
@@ -82,7 +86,7 @@ public class ProjectMemberService : IProjectMemberService
                 return ApiResponse<ProjectMemberDto>.ErrorResponse("Membership not found");
             }
 
-            return ApiResponse<ProjectMemberDto>.SuccessResponse(MapToDto(membership));
+            return ApiResponse<ProjectMemberDto>.SuccessResponse(_mapper.Map<ProjectMemberDto>(membership));
         }
         catch (Exception ex)
         {
@@ -123,7 +127,7 @@ public class ProjectMemberService : IProjectMemberService
             {
                 ProjectId = dto.ProjectId,
                 UserId = dto.UserId,
-                JoinedAt = DateTime.UtcNow
+                JoinedAt = DateTime.Now
             };
 
             await _unitOfWork.ProjectMembers.AddAsync(projectMember);
@@ -133,7 +137,7 @@ public class ProjectMemberService : IProjectMemberService
             var membership = await _unitOfWork.ProjectMembers.GetMembershipAsync(dto.ProjectId, dto.UserId);
             
             _logger.LogInformation("Member added successfully: ProjectId={ProjectId}, UserId={UserId}", dto.ProjectId, dto.UserId);
-            return ApiResponse<ProjectMemberDto>.SuccessResponse(MapToDto(membership!), "Member added successfully");
+            return ApiResponse<ProjectMemberDto>.SuccessResponse(_mapper.Map<ProjectMemberDto>(membership!), "Member added successfully");
         }
         catch (Exception ex)
         {
@@ -166,19 +170,5 @@ public class ProjectMemberService : IProjectMemberService
             _logger.LogError(ex, "Error removing member");
             return ApiResponse<bool>.ErrorResponse("Error removing member", ex.Message);
         }
-    }
-
-    private ProjectMemberDto MapToDto(ProjectMember pm)
-    {
-        return new ProjectMemberDto
-        {
-            ProjectId = pm.ProjectId,
-            ProjectName = pm.Project?.Name ?? string.Empty,
-            UserId = pm.UserId,
-            UserName = pm.User?.Name ?? string.Empty,
-            UserEmail = pm.User?.Email ?? string.Empty,
-            GithubUsername = pm.User?.GithubUsername,
-            JoinedAt = pm.JoinedAt
-        };
     }
 }

@@ -70,4 +70,31 @@ public class GithubRepoRepository : GenericRepository<GithubRepo>, IGithubRepoRe
                 .ThenInclude(rc => rc.User)
             .FirstOrDefaultAsync(gr => gr.GithubRepoId == repoId);
     }
-}
+
+    public async Task<IEnumerable<GithubRepo>> GetAllWithDetailsAsync()
+        {
+            return await _dbSet
+                .Include(gr => gr.Project)
+                    .ThenInclude(p => p.Class)
+                        .ThenInclude(c => c.Course)
+                .Include(gr => gr.RepoContributors)
+                    .ThenInclude(rc => rc.User)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<GithubRepo>> GetReposByProjectIdWithSemesterAsync(Guid projectId)
+        {
+            return await _dbSet
+                .Include(gr => gr.Project)
+                    .ThenInclude(p => p.Class)
+                        .ThenInclude(c => c.Course)
+                .Include(gr => gr.Project)
+                    .ThenInclude(p => p.Class)
+                        .ThenInclude(c => c.Semester)
+                .Include(gr => gr.RepoContributors)
+                    .ThenInclude(rc => rc.User)
+                .Where(gr => gr.ProjectId == projectId)
+                .ToListAsync();
+        }
+    }
+

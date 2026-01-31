@@ -10,6 +10,8 @@ public class GithubApiService : IGithubApiService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private const string GitHubApiBaseUrl = "https://api.github.com";
+    private const int MaxRetries = 5;
+    private const int RetryDelayMs = 2000;
 
     public GithubApiService(IHttpClientFactory httpClientFactory)
     {
@@ -26,21 +28,16 @@ public class GithubApiService : IGithubApiService
             var client = CreateHttpClient(accessToken);
             var url = $"{GitHubApiBaseUrl}/repos/{owner}/{repo}/stats/contributors";
             
-            var response = await client.GetAsync(url);
+            var response = await GetWithRetryAsync(client, url);
             
-            if (!response.IsSuccessStatusCode)
-            {
-                if (response.StatusCode == System.Net.HttpStatusCode.Accepted)
-                {
-                    await Task.Delay(1000);
-                    response = await client.GetAsync(url);
-                }
-                
-                if (!response.IsSuccessStatusCode)
-                    return null;
-            }
+            if (response == null || !response.IsSuccessStatusCode)
+                return null;
 
             var content = await response.Content.ReadAsStringAsync();
+            
+            if (string.IsNullOrWhiteSpace(content) || content == "[]")
+                return new GithubContributorStats { Contributors = new List<GithubContributor>() };
+
             var contributors = JsonSerializer.Deserialize<List<GitHubContributorResponse>>(content, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -86,21 +83,16 @@ public class GithubApiService : IGithubApiService
             var client = CreateHttpClient(accessToken);
             var url = $"{GitHubApiBaseUrl}/repos/{owner}/{repo}/stats/commit_activity";
             
-            var response = await client.GetAsync(url);
+            var response = await GetWithRetryAsync(client, url);
             
-            if (!response.IsSuccessStatusCode)
-            {
-                if (response.StatusCode == System.Net.HttpStatusCode.Accepted)
-                {
-                    await Task.Delay(1000);
-                    response = await client.GetAsync(url);
-                }
-                
-                if (!response.IsSuccessStatusCode)
-                    return null;
-            }
+            if (response == null || !response.IsSuccessStatusCode)
+                return null;
 
             var content = await response.Content.ReadAsStringAsync();
+            
+            if (string.IsNullOrWhiteSpace(content) || content == "[]")
+                return new List<GithubWeeklyCommitActivity>();
+
             var activity = JsonSerializer.Deserialize<List<GitHubCommitActivityResponse>>(content, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -119,6 +111,31 @@ public class GithubApiService : IGithubApiService
         {
             return null;
         }
+    }
+
+    private async Task<HttpResponseMessage?> GetWithRetryAsync(HttpClient client, string url)
+    {
+        HttpResponseMessage? response = null;
+        
+        for (int attempt = 0; attempt < MaxRetries; attempt++)
+        {
+            response = await client.GetAsync(url);
+            
+            // GitHub returns 202 Accepted when stats are being computed
+            if (response.StatusCode == System.Net.HttpStatusCode.Accepted)
+            {
+                await Task.Delay(RetryDelayMs * (attempt + 1)); // Exponential backoff
+                continue;
+            }
+            
+            if (response.IsSuccessStatusCode)
+                return response;
+                
+            // For other error codes, don't retry
+            break;
+        }
+        
+        return response;
     }
 
     private HttpClient CreateHttpClient(string? accessToken)
