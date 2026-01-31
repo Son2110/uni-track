@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
@@ -12,11 +13,13 @@ public class SemesterService : ISemesterService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<SemesterService> _logger;
+    private readonly IMapper _mapper;
 
-    public SemesterService(IUnitOfWork unitOfWork, ILogger<SemesterService> logger)
+    public SemesterService(IUnitOfWork unitOfWork, ILogger<SemesterService> logger, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _mapper = mapper;
     }
 
     public async Task<ApiResponse<PagedResult<SemesterDto>>> GetAllSemestersAsync(SemesterFilterParams filterParams)
@@ -50,12 +53,13 @@ public class SemesterService : ISemesterService
             var items = query
                 .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
                 .Take(filterParams.PageSize)
-                .Select(s => MapToDto(s))
                 .ToList();
+
+            var itemDtos = _mapper.Map<List<SemesterDto>>(items);
 
             var result = new PagedResult<SemesterDto>
             {
-                Items = items,
+                Items = itemDtos,
                 TotalCount = totalCount,
                 PageNumber = filterParams.PageNumber,
                 PageSize = filterParams.PageSize
@@ -84,7 +88,7 @@ public class SemesterService : ISemesterService
             }
 
             _logger.LogInformation("Successfully retrieved semester: {SemesterId}", id);
-            return ApiResponse<SemesterDto>.SuccessResponse(MapToDto(semester));
+            return ApiResponse<SemesterDto>.SuccessResponse(_mapper.Map<SemesterDto>(semester));
         }
         catch (Exception ex)
         {
@@ -124,7 +128,7 @@ public class SemesterService : ISemesterService
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Successfully created semester: {SemesterId}", semester.SemesterId);
-            return ApiResponse<SemesterDto>.SuccessResponse(MapToDto(semester), "Semester created successfully");
+            return ApiResponse<SemesterDto>.SuccessResponse(_mapper.Map<SemesterDto>(semester), "Semester created successfully");
         }
         catch (Exception ex)
         {
@@ -167,7 +171,7 @@ public class SemesterService : ISemesterService
             await _unitOfWork.SaveChangesAsync();
 
             _logger.LogInformation("Successfully updated semester: {SemesterId}", id);
-            return ApiResponse<SemesterDto>.SuccessResponse(MapToDto(semester), "Semester updated successfully");
+            return ApiResponse<SemesterDto>.SuccessResponse(_mapper.Map<SemesterDto>(semester), "Semester updated successfully");
         }
         catch (Exception ex)
         {
@@ -199,19 +203,6 @@ public class SemesterService : ISemesterService
             _logger.LogError(ex, "Error deleting semester: {SemesterId}", id);
             return ApiResponse<bool>.ErrorResponse("Error deleting semester", ex.Message);
         }
-    }
-
-    private static SemesterDto MapToDto(Semester semester)
-    {
-        return new SemesterDto
-        {
-            SemesterId = semester.SemesterId,
-            Name = semester.Name,
-            StartDate = semester.StartDate,
-            EndDate = semester.EndDate,
-            CreatedAt = semester.CreatedAt,
-            UpdatedAt = semester.UpdatedAt
-        };
     }
 
     private static IQueryable<Semester> ApplySorting(IQueryable<Semester> query, string? sortBy, bool descending)

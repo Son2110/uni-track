@@ -1,8 +1,10 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using PMSS.Application.Interfaces.Repositories;
 using PMSS.Application.Interfaces.Services;
+using PMSS.Application.Mappings;
 using PMSS.Infrastructure.Data;
 using PMSS.Infrastructure.Repositories;
 using PMSS.Infrastructure.Services;
@@ -17,6 +19,10 @@ public static class ServiceCollectionExtensions
             options.UseSqlServer(
                 configuration.GetConnectionString("DefaultConnection"),
                 b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
+
+        // Register AutoMapper
+        var config = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
+        services.AddSingleton<IMapper>(config.CreateMapper());
 
         services.AddScoped<ISemesterRepository, SemesterRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
