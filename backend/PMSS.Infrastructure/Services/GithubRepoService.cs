@@ -125,8 +125,8 @@ public class GithubRepoService : IGithubRepoService
                 RepoName = dto.RepoName,
                 IsPrivate = dto.IsPrivate,
                 ApiToken = dto.ApiToken,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.Now,
+                UpdatedAt = DateTime.Now
             };
 
             await _unitOfWork.GithubRepos.AddAsync(repo);
@@ -169,7 +169,7 @@ public class GithubRepoService : IGithubRepoService
             repo.RepoName = dto.RepoName;
             repo.IsPrivate = dto.IsPrivate;
             repo.ApiToken = dto.ApiToken;
-            repo.UpdatedAt = DateTime.UtcNow;
+            repo.UpdatedAt = DateTime.Now;
 
             _unitOfWork.GithubRepos.Update(repo);
             await _unitOfWork.SaveChangesAsync();
