@@ -18,4 +18,5 @@ public interface IGithubRepoService
     Task<ApiResponse<GithubRepoDto>> AddContributorToRepoAsync(Guid repoId, Guid userId, Guid addedByUserId);
     Task<ApiResponse<bool>> RemoveContributorFromRepoAsync(Guid repoId, Guid userId, Guid removedByUserId);
     Task<ApiResponse<bool>> CanUserManageRepoAsync(Guid repoId, Guid userId);
+    Task<ApiResponse<ProjectGithubContributionDto>> GetGithubContributionsAsync(Guid projectId);
 }

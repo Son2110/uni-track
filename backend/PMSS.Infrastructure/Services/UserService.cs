@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.User;
@@ -12,11 +13,13 @@ public class UserService : IUserService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<UserService> _logger;
+    private readonly IMapper _mapper;
 
-    public UserService(IUnitOfWork unitOfWork, ILogger<UserService> logger)
+    public UserService(IUnitOfWork unitOfWork, ILogger<UserService> logger, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _mapper = mapper;
     }
 
     public async Task<ApiResponse<PagedResult<UserDto>>> GetAllUsersAsync(UserFilterParams filterParams)
@@ -44,12 +47,13 @@ public class UserService : IUserService
             var items = query
                 .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
                 .Take(filterParams.PageSize)
-                .Select(u => MapToDto(u))
                 .ToList();
+
+            var itemDtos = _mapper.Map<List<UserDto>>(items);
 
             var result = new PagedResult<UserDto>
             {
-                Items = items,
+                Items = itemDtos,
                 TotalCount = totalCount,
                 PageNumber = filterParams.PageNumber,
                 PageSize = filterParams.PageSize
@@ -71,7 +75,7 @@ public class UserService : IUserService
             if (user == null)
                 return ApiResponse<UserDto>.ErrorResponse("User not found");
 
-            return ApiResponse<UserDto>.SuccessResponse(MapToDto(user));
+            return ApiResponse<UserDto>.SuccessResponse(_mapper.Map<UserDto>(user));
         }
         catch (Exception ex)
         {
@@ -108,7 +112,7 @@ public class UserService : IUserService
             await _unitOfWork.Users.AddAsync(user);
             await _unitOfWork.SaveChangesAsync();
 
-            return ApiResponse<UserDto>.SuccessResponse(MapToDto(user), "User created successfully");
+            return ApiResponse<UserDto>.SuccessResponse(_mapper.Map<UserDto>(user), "User created successfully");
         }
         catch (Exception ex)
         {
@@ -145,7 +149,7 @@ public class UserService : IUserService
             _unitOfWork.Users.Update(user);
             await _unitOfWork.SaveChangesAsync();
 
-            return ApiResponse<UserDto>.SuccessResponse(MapToDto(user), "User updated successfully");
+            return ApiResponse<UserDto>.SuccessResponse(_mapper.Map<UserDto>(user), "User updated successfully");
         }
         catch (Exception ex)
         {
@@ -195,21 +199,6 @@ public class UserService : IUserService
         {
             return ApiResponse<bool>.ErrorResponse("Error updating password", ex.Message);
         }
-    }
-
-    private static UserDto MapToDto(User user)
-    {
-        return new UserDto
-        {
-            UserId = user.UserId,
-            Name = user.Name,
-            Email = user.Email,
-            GithubUsername = user.GithubUsername,
-            GithubEmail = user.GithubEmail,
-            Role = user.Role,
-            CreatedAt = user.CreatedAt,
-            UpdatedAt = user.UpdatedAt
-        };
     }
 
     private static IQueryable<User> ApplySorting(IQueryable<User> query, string? sortBy, bool descending)
