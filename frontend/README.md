@@ -1,379 +1,304 @@
-# PMSS Frontend - React Application
+# UniTrack - Academic Project Management System
 
-## Overview
+> A modern, full-stack academic project management platform for FPT University, built with React, TypeScript, and Vite.
 
-React-based frontend for the Project Management Support System (PMSS). This will provide a modern, responsive UI for managing academic projects, GitHub integration, and Jira tracking.
+![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue)
+![React](https://img.shields.io/badge/React-19.1-61dafb)
+![Vite](https://img.shields.io/badge/Vite-6.3-646cff)
+![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38bdf8)
 
-## Tech Stack (Recommended)
+---
 
-- **React 18+** - UI Framework
-- **TypeScript** - Type Safety
-- **Vite** - Build Tool & Dev Server
-- **React Router** - Routing
-- **Axios** - HTTP Client
-- **TanStack Query (React Query)** - Server State Management
-- **Zustand** or **Redux Toolkit** - Client State Management
-- **Tailwind CSS** or **Material-UI** - Styling
-- **React Hook Form** - Form Handling
-- **Zod** - Schema Validation
+## 📋 Table of Contents
 
-## Prerequisites
+- [Overview](#overview)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture](#architecture)
+- [Getting Started](#getting-started)
+- [Project Structure](#project-structure)
+- [Available Scripts](#available-scripts)
+- [Development Guidelines](#development-guidelines)
+- [Environment Setup](#environment-setup)
 
-- [Node.js 18+](https://nodejs.org/) (LTS version recommended)
-- [npm](https://www.npmjs.com/) or [yarn](https://yarnpkg.com/) or [pnpm](https://pnpm.io/)
-- Code editor ([VS Code](https://code.visualstudio.com/) recommended)
+---
 
-## Project Setup (Not Yet Created)
+## 🎯 Overview
 
-When your team creates the React app, use one of these commands:
+**UniTrack** is a comprehensive academic project management system designed for FPT University. It provides a centralized platform for managing:
 
-### Option 1: Vite (Recommended - Faster)
+- **Students & Teachers** - User management with role-based access control
+- **Semesters** - Academic term scheduling and management
+- **Courses** - Course catalog and curriculum management
+- **Classes** - Class scheduling, enrollment tracking
+- **Projects** - Student project tracking with GitHub and Jira integration
 
-```bash
-cd frontend
-npm create vite@latest . -- --template react-ts
-npm install
+The system features a modern, responsive UI with support for both light and dark modes, seamlessly integrating with FPT University's authentication system (FeID and Google OAuth).
+
+---
+
+## 🛠️ Tech Stack
+
+### Core
+- **React 19.1** - UI library
+- **TypeScript 5.8** - Type safety
+- **Vite 6.3** - Build tool & dev server
+
+### Styling
+- **Tailwind CSS 3.4** - Utility-first CSS framework
+- **clsx + tailwind-merge** - Dynamic class management
+
+### Routing & State
+- **React Router DOM 7.13** - Client-side routing
+- **Zustand 5.0** - Global state management
+
+### UI Components
+- **Lucide React** - Modern icon library
+- Custom UI component library (Button, Card, Table, Badge, Input)
+
+### Development Tools
+- **ESLint** - Code linting
+- **PostCSS** - CSS processing
+- **Autoprefixer** - CSS vendor prefixing
+
+---
+
+## 🏗️ Architecture
+
+UniTrack follows a **Feature-Based Architecture** for maintainability and scalability:
+
+```
+src/
+├── app/                    # Global application setup
+│   ├── router.tsx         # Route configuration
+│   └── store.ts           # Global state (Zustand)
+│
+├── components/            # Shared UI components
+│   ├── ui/               # Base components (Button, Card, Table, etc.)
+│   ├── icons/            # Custom icon components
+│   ├── Header.tsx        # Top navigation header
+│   └── Sidebar.tsx       # Main navigation sidebar
+│
+├── features/             # Feature modules
+│   ├── auth/            # Authentication (Login, OAuth)
+│   ├── dashboard/       # Dashboard statistics & charts
+│   ├── academic/        # Semesters, Courses, Classes
+│   └── users/           # User management
+│
+├── layouts/              # Layout wrappers
+│   ├── AdminLayout.tsx  # Admin dashboard layout
+│   └── AuthLayout.tsx   # Authentication pages layout
+│
+├── data/                 # Mock data (to be replaced with API)
+│   └── mockData.ts      # Centralized mock data
+│
+├── types/                # TypeScript type definitions
+│   └── index.ts         # Shared interfaces
+│
+├── lib/                  # Utility functions
+│   └── utils.ts         # Helper functions (cn, etc.)
+│
+└── main.tsx             # Application entry point
 ```
 
-### Option 2: Create React App
+### Key Architectural Principles
 
-```bash
-cd frontend
-npx create-react-app . --template typescript
-```
+1. **Feature-Based Organization**: Each feature (auth, dashboard, academic, users) is self-contained with its own pages, components, and logic.
 
-## Quick Start (After Setup)
+2. **Shared UI Components**: Reusable components in `components/ui/` ensure consistency across the app.
 
-### 1. Install Dependencies
+3. **Type Safety**: Strict TypeScript interfaces in `types/index.ts` matching the database schema.
 
-```bash
-cd frontend
-npm install
-```
+4. **Separation of Concerns**: 
+   - **Layouts** handle page structure
+   - **Features** contain business logic
+   - **Components** are pure & reusable
 
-### 2. Configure Environment
+5. **Data Flow**:
+   - Mock data centralized in `data/mockData.ts`
+   - Global state managed via Zustand (`app/store.ts`)
+   - Component-level state using React hooks
 
-Create `.env.local` file:
+---
 
-```env
-VITE_API_BASE_URL=http://localhost:5000/api
-VITE_API_TIMEOUT=30000
-```
+## 🚀 Getting Started
 
-### 3. Start Development Server
+### Prerequisites
 
-```bash
-npm run dev
-```
+- **Node.js** v18+ (recommended v20+)
+- **npm** v9+ or **yarn** v1.22+
 
-The app will be available at `http://localhost:5173` (Vite) or `http://localhost:3000` (CRA)
+### Installation
 
-## Recommended Project Structure
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd PMSS/frontend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+4. **Open in browser**
+   ```
+   http://localhost:5173
+   ```
+
+---
+
+## 📂 Project Structure
 
 ```
 frontend/
-├── public/
-│   ├── favicon.ico
-│   └── assets/
+├── public/               # Static assets
+│   └── favicon.svg      # Custom GraduationCap favicon
+│
 ├── src/
-│   ├── api/                    # API client & endpoints
-│   │   ├── client.ts           # Axios instance
-│   │   ├── endpoints/
-│   │   │   ├── projects.ts
-│   │   │   ├── users.ts
-│   │   │   └── courses.ts
-│   │   └── types/              # API response types
-│   ├── components/             # Reusable components
-│   │   ├── common/
-│   │   │   ├── Button.tsx
-│   │   │   ├── Input.tsx
-│   │   │   └── Modal.tsx
-│   │   ├── layout/
-│   │   │   ├── Header.tsx
-│   │   │   ├── Sidebar.tsx
-│   │   │   └── Footer.tsx
-│   │   └── features/
-│   │       ├── ProjectCard.tsx
-│   │       └── UserProfile.tsx
-│   ├── pages/                  # Page components
-│   │   ├── Dashboard.tsx
-│   │   ├── Projects/
-│   │   │   ├── ProjectList.tsx
-│   │   │   ├── ProjectDetail.tsx
-│   │   │   └── CreateProject.tsx
-│   │   ├── Users/
-│   │   └── Courses/
-│   ├── hooks/                  # Custom React hooks
-│   │   ├── useAuth.ts
-│   │   ├── useProjects.ts
-│   │   └── usePagination.ts
-│   ├── store/                  # State management
-│   │   ├── authStore.ts
-│   │   └── uiStore.ts
-│   ├── utils/                  # Utility functions
-│   │   ├── formatters.ts
-│   │   └── validators.ts
-│   ├── types/                  # TypeScript types
-│   │   └── index.ts
-│   ├── router/                 # Routing configuration
-│   │   └── index.tsx
-│   ├── styles/                 # Global styles
-│   │   └── globals.css
-│   ├── App.tsx
-│   ├── main.tsx
-│   └── vite-env.d.ts
-├── .env.example
-├── .env.local
-├── package.json
-├── tsconfig.json
-├── vite.config.ts
-└── README.md
+│   ├── app/             # Router & global state
+│   ├── components/      # Shared components
+│   ├── data/            # Mock data
+│   ├── features/        # Feature modules
+│   ├── layouts/         # Page layouts
+│   ├── lib/             # Utilities
+│   ├── types/           # TypeScript definitions
+│   ├── index.css        # Global styles
+│   └── main.tsx         # Entry point
+│
+├── index.html           # HTML template
+├── package.json         # Dependencies
+├── tailwind.config.js   # Tailwind configuration
+├── tsconfig.app.json    # TypeScript config
+├── vite.config.ts       # Vite configuration
+└── README.md            # This file
 ```
 
-## Recommended Dependencies
+---
 
-```bash
-# Core dependencies
-npm install react-router-dom
-npm install axios
-npm install @tanstack/react-query
-npm install zustand  # or @reduxjs/toolkit
-npm install react-hook-form
-npm install zod
+## 🎨 Available Scripts
 
-# UI Framework (choose one)
-npm install @mui/material @mui/icons-material @emotion/react @emotion/styled  # Material-UI
-# OR
-npm install -D tailwindcss postcss autoprefixer  # Tailwind CSS
+| Script | Command | Description |
+|--------|---------|-------------|
+| **Dev Server** | `npm run dev` | Start development server with HMR |
+| **Build** | `npm run build` | Build for production (outputs to `dist/`) |
+| **Preview** | `npm run preview` | Preview production build locally |
+| **Lint** | `npm run lint` | Run ESLint to check code quality |
 
-# Dev dependencies
-npm install -D @types/node
-npm install -D eslint @typescript-eslint/parser @typescript-eslint/eslint-plugin
-npm install -D prettier eslint-config-prettier eslint-plugin-prettier
-```
+---
 
-## API Integration
+## 📘 Development Guidelines
 
-### Example API Client Setup
+### Code Style
 
-```typescript
-// src/api/client.ts
-import axios from 'axios';
+- **TypeScript**: Use strict typing, avoid `any`
+- **Components**: Functional components with TypeScript
+- **Naming**: PascalCase for components, camelCase for functions/variables
+- **File Naming**: 
+  - Components: `ComponentName.tsx`
+  - Utilities: `utilityName.ts`
+  - Types: `index.ts`
 
-const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+### Component Structure
 
-// Request interceptor for auth token
-apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
-
-// Response interceptor for error handling
-apiClient.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    // Handle errors globally
-    return Promise.reject(error);
-  }
-);
-
-export default apiClient;
-```
-
-### Example API Endpoint
-
-```typescript
-// src/api/endpoints/projects.ts
-import apiClient from '../client';
-import { Project, ApiResponse, PagedResult } from '../types';
-
-export const projectsApi = {
-  getAll: (params?: {
-    pageNumber?: number;
-    pageSize?: number;
-    sortBy?: string;
-  }) =>
-    apiClient.get<ApiResponse<PagedResult<Project>>>('/projects', { params }),
-
-  getById: (id: number) =>
-    apiClient.get<ApiResponse<Project>>(`/projects/${id}`),
-
-  create: (data: Partial<Project>) =>
-    apiClient.post<ApiResponse<Project>>('/projects', data),
-
-  update: (id: number, data: Partial<Project>) =>
-    apiClient.put<ApiResponse<Project>>(`/projects/${id}`, data),
-
-  delete: (id: number) =>
-    apiClient.delete<ApiResponse<void>>(`/projects/${id}`),
-};
-```
-
-## Development Guidelines
-
-### Component Best Practices
-
-1. **Use Functional Components** with hooks
-2. **TypeScript** for type safety
-3. **Props Interface** for every component
-4. **Composition** over inheritance
-5. **Custom Hooks** for reusable logic
-
-### Example Component
-
-```typescript
+```tsx
 import React from 'react';
+import type { PropsInterface } from '@/types';
 
-interface ProjectCardProps {
-  id: number;
-  name: string;
-  description: string;
-  onEdit: (id: number) => void;
+interface ComponentProps {
+  // Props definition
 }
 
-export const ProjectCard: React.FC<ProjectCardProps> = ({
-  id,
-  name,
-  description,
-  onEdit,
-}) => {
+export const Component: React.FC<ComponentProps> = ({ props }) => {
+  // Component logic
+  
   return (
-    <div className="project-card">
-      <h3>{name}</h3>
-      <p>{description}</p>
-      <button onClick={() => onEdit(id)}>Edit</button>
-    </div>
+    // JSX
   );
 };
 ```
 
-## Available Scripts
+### Styling Guidelines
 
-```bash
-# Start development server
-npm run dev
+- Use Tailwind utility classes
+- Use `cn()` utility for conditional classes
+- Follow color scheme: `primary` (#1E5BB8), `fpt-orange` (#F37021)
+- Support dark mode with `dark:` variants
 
-# Build for production
-npm run build
+### Adding New Features
 
-# Preview production build
-npm run preview
+1. Create feature directory in `src/features/`
+2. Add `pages/` and `components/` subdirectories
+3. Define routes in `app/router.tsx`
+4. Add types to `types/index.ts`
+5. Update mock data in `data/mockData.ts` (until API is connected)
 
-# Run linting
-npm run lint
+---
 
-# Run tests (when configured)
-npm run test
+## 🔧 Environment Setup
 
-# Format code
-npm run format
+### Path Aliases
+
+The project uses `@/` as an alias for `src/`:
+
+```typescript
+import { Button } from '@/components/ui/Button';
+import { mockUsers } from '@/data/mockData';
 ```
 
-## Environment Variables
+Configured in:
+- `tsconfig.app.json` - TypeScript path resolution
+- `vite.config.ts` - Vite module resolution
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `VITE_API_BASE_URL` | Backend API URL | `http://localhost:5000/api` |
-| `VITE_API_TIMEOUT` | Request timeout (ms) | `30000` |
+### Custom Tailwind Theme
 
-## Features to Implement
+Colors defined in `tailwind.config.js`:
 
-### Phase 1: Core Features
-- [ ] User authentication (login/register)
-- [ ] Dashboard with statistics
-- [ ] Project CRUD operations
-- [ ] User management
-- [ ] Course management
-
-### Phase 2: Advanced Features
-- [ ] GitHub repository integration
-- [ ] Jira configuration
-- [ ] Team member management
-- [ ] Access request workflow
-- [ ] Contribution statistics
-
-### Phase 3: Polish
-- [ ] Dark mode
-- [ ] Responsive design
-- [ ] Loading states
-- [ ] Error boundaries
-- [ ] Toast notifications
-
-## Styling Recommendations
-
-### Tailwind CSS Setup
-
-```bash
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
+```javascript
+colors: {
+  primary: '#1E5BB8',          // FPT Blue
+  'fpt-orange': '#F37021',     // FPT Orange
+  'background-light': '#F9FAFB',
+  'background-dark': '#111827',
+  'card-light': '#ffffff',
+  'card-dark': '#111827',
+}
 ```
 
-### Material-UI Setup
+---
 
-```bash
-npm install @mui/material @mui/icons-material @emotion/react @emotion/styled
-```
+## 🗄️ Database Schema
 
-## Testing
+Types in `src/types/index.ts` map directly to the database schema:
 
-```bash
-# Install testing libraries
-npm install -D vitest @testing-library/react @testing-library/jest-dom @testing-library/user-event
+| Entity | Key Fields |
+|--------|-----------|
+| **User** | userId, name, email, role, studentOrEmployeeId |
+| **Semester** | semesterId, name, startDate, endDate |
+| **Course** | courseId, code, name, description |
+| **Class** | classId, classCode, teacherId, courseId, semesterId |
+| **Project** | projectId, classId, name, description |
+| **ClassEnrollment** | classId, userId, enrolledAt |
 
-# Run tests
-npm run test
-```
+---
 
-## Deployment
+## 🔮 Future Enhancements
 
-### Build for Production
+- [ ] Connect to backend API (replace mock data)
+- [ ] Implement real authentication (OAuth, FeID)
+- [ ] Add project GitHub integration
+- [ ] Add project Jira integration
+- [ ] Implement file upload functionality
+- [ ] Add real-time notifications
+- [ ] Export data to Excel/PDF
+- [ ] Advanced filtering and search
+- [ ] User profile management
+- [ ] Project activity tracking
 
-```bash
-npm run build
-```
+---
 
-Output will be in the `dist/` folder (Vite) or `build/` folder (CRA).
-
-### Deploy Options
-
-- **Vercel** - Automatic deployment from GitHub
-- **Netlify** - Simple drag & drop or GitHub integration
-- **GitHub Pages** - Free hosting for static sites
-- **AWS S3 + CloudFront** - Scalable solution
-
-## Troubleshooting
-
-### CORS Issues
-
-If you encounter CORS errors, ensure the backend has CORS configured for your frontend URL.
-
-### API Connection Issues
-
-1. Verify backend is running (`http://localhost:5000`)
-2. Check `.env.local` has correct `VITE_API_BASE_URL`
-3. Use browser DevTools Network tab to inspect requests
-
-## Resources
-
-- [React Documentation](https://react.dev/)
-- [TypeScript Documentation](https://www.typescriptlang.org/)
-- [Vite Documentation](https://vitejs.dev/)
-- [TanStack Query](https://tanstack.com/query/latest)
-- [React Router](https://reactrouter.com/)
-
-## Contributing
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) in the root directory.
-
-## License
-
-[Your License]
