@@ -9,4 +9,7 @@ public interface IGithubRepoRepository : IGenericRepository<GithubRepo>
     Task<IEnumerable<GithubRepo>> GetReposByCourseIdAsync(Guid courseId);
     Task<IEnumerable<GithubRepo>> GetReposByUserIdAsync(Guid userId);
     Task<GithubRepo?> GetRepoWithDetailsAsync(Guid repoId);
+    Task<IEnumerable<GithubRepo>> GetAllWithDetailsAsync();
+    Task<IEnumerable<GithubRepo>> GetReposByProjectIdWithSemesterAsync(Guid projectId);
 }
+

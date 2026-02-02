@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.ClassEnrollment;
 using PMSS.Application.DTOs.Common;
@@ -11,11 +12,13 @@ public class ClassEnrollmentService : IClassEnrollmentService
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ClassEnrollmentService> _logger;
+    private readonly IMapper _mapper;
 
-    public ClassEnrollmentService(IUnitOfWork unitOfWork, ILogger<ClassEnrollmentService> logger)
+    public ClassEnrollmentService(IUnitOfWork unitOfWork, ILogger<ClassEnrollmentService> logger, IMapper mapper)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _mapper = mapper;
     }
 
     public async Task<ApiResponse<PagedResult<ClassEnrollmentDto>>> GetAllEnrollmentsAsync(ClassEnrollmentFilterParams filterParams)
@@ -53,12 +56,13 @@ public class ClassEnrollmentService : IClassEnrollmentService
             var items = query
                 .Skip((filterParams.PageNumber - 1) * filterParams.PageSize)
                 .Take(filterParams.PageSize)
-                .Select(e => MapToDto(e))
                 .ToList();
+
+            var itemDtos = _mapper.Map<List<ClassEnrollmentDto>>(items);
 
             var result = new PagedResult<ClassEnrollmentDto>
             {
-                Items = items,
+                Items = itemDtos,
                 TotalCount = totalCount,
                 PageNumber = filterParams.PageNumber,
                 PageSize = filterParams.PageSize
@@ -86,7 +90,7 @@ public class ClassEnrollmentService : IClassEnrollmentService
                 return ApiResponse<ClassEnrollmentDto>.ErrorResponse("Enrollment not found");
             }
 
-            return ApiResponse<ClassEnrollmentDto>.SuccessResponse(MapToDto(enrollment));
+            return ApiResponse<ClassEnrollmentDto>.SuccessResponse(_mapper.Map<ClassEnrollmentDto>(enrollment));
         }
         catch (Exception ex)
         {
@@ -102,7 +106,7 @@ public class ClassEnrollmentService : IClassEnrollmentService
             _logger.LogInformation("Getting enrollments for ClassId={ClassId}", classId);
 
             var enrollments = await _unitOfWork.ClassEnrollments.GetEnrollmentsByClassIdAsync(classId);
-            var enrollmentDtos = enrollments.Select(MapToDto).ToList();
+            var enrollmentDtos = _mapper.Map<List<ClassEnrollmentDto>>(enrollments);
 
             return ApiResponse<IEnumerable<ClassEnrollmentDto>>.SuccessResponse(enrollmentDtos);
         }
@@ -120,7 +124,7 @@ public class ClassEnrollmentService : IClassEnrollmentService
             _logger.LogInformation("Getting enrollments for UserId={UserId}", userId);
 
             var enrollments = await _unitOfWork.ClassEnrollments.GetEnrollmentsByUserIdAsync(userId);
-            var enrollmentDtos = enrollments.Select(MapToDto).ToList();
+            var enrollmentDtos = _mapper.Map<List<ClassEnrollmentDto>>(enrollments);
 
             return ApiResponse<IEnumerable<ClassEnrollmentDto>>.SuccessResponse(enrollmentDtos);
         }
@@ -188,7 +192,7 @@ public class ClassEnrollmentService : IClassEnrollmentService
             enrollment = await _unitOfWork.ClassEnrollments.GetEnrollmentAsync(dto.ClassId, dto.UserId);
             _logger.LogInformation("Student enrolled successfully: ClassId={ClassId}, UserId={UserId}", dto.ClassId, dto.UserId);
 
-            return ApiResponse<ClassEnrollmentDto>.SuccessResponse(MapToDto(enrollment!), "Student enrolled successfully");
+            return ApiResponse<ClassEnrollmentDto>.SuccessResponse(_mapper.Map<ClassEnrollmentDto>(enrollment!), "Student enrolled successfully");
         }
         catch (Exception ex)
         {
@@ -301,25 +305,6 @@ public class ClassEnrollmentService : IClassEnrollmentService
             _logger.LogError(ex, "Error getting enrollment count for ClassId={ClassId}", classId);
             return ApiResponse<int>.ErrorResponse("Error getting enrollment count", ex.Message);
         }
-    }
-
-    private static ClassEnrollmentDto MapToDto(ClassEnrollment enrollment)
-    {
-        return new ClassEnrollmentDto
-        {
-            ClassId = enrollment.ClassId,
-            ClassName = $"{enrollment.Course?.Code} - {enrollment.Class?.ClassCode}",
-            CourseCode = enrollment.Course?.Code ?? string.Empty,
-            CourseName = enrollment.Course?.Name ?? string.Empty,
-            ClassCode = enrollment.Class?.ClassCode ?? string.Empty,
-            SemesterName = enrollment.Class?.Semester?.Name ?? string.Empty,
-            TeacherName = enrollment.Class?.Teacher?.Name ?? string.Empty,
-            UserId = enrollment.UserId,
-            StudentName = enrollment.User?.Name ?? string.Empty,
-            StudentEmail = enrollment.User?.Email ?? string.Empty,
-            CourseId = enrollment.CourseId,
-            EnrolledAt = enrollment.EnrolledAt
-        };
     }
 
     private static IQueryable<ClassEnrollment> ApplySorting(IQueryable<ClassEnrollment> query, string? sortBy, bool descending)
