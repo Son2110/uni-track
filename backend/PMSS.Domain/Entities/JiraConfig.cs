@@ -14,3 +14,4 @@ public class JiraConfig
 
     public virtual Project Project { get; set; } = null!;
 }
+

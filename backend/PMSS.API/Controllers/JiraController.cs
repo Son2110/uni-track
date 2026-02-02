@@ -260,4 +260,24 @@ public class JiraController : ControllerBase
 
         return token[..4] + "****" + token[^4..];
     }
+
+    // GET /api/jira/setup-guide
+    [HttpGet("setup-guide")]
+    public IActionResult GetSetupGuide()
+    {
+        return Ok(new
+        {
+            steps = new[]
+            {
+                new { step = 1, title = "Get your Jira URL", description = "Your Jira URL looks like: https://yourteam.atlassian.net" },
+                new { step = 2, title = "Get API Token", description = "Go to https://id.atlassian.com/manage-profile/security/api-tokens and create a new token" },
+                new { step = 3, title = "Find Project Key", description = "Your project key is the prefix in issue IDs (e.g., 'PMSS' from 'PMSS-123')" }
+            },
+            links = new
+            {
+                createToken = "https://id.atlassian.com/manage-profile/security/api-tokens",
+                jiraHelp = "https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/"
+            }
+        });
+    }
 }
