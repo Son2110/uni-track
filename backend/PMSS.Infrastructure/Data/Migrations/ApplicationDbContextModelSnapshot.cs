@@ -205,9 +205,8 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("Email")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -228,6 +227,8 @@ namespace PMSS.Infrastructure.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("JiraConfigId");
+
+                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("ProjectId")
                         .IsUnique();
@@ -480,11 +481,17 @@ namespace PMSS.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("PMSS.Domain.Entities.JiraConfig", b =>
                 {
+                    b.HasOne("PMSS.Domain.Entities.User", "CreatedByUser")
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId");
+
                     b.HasOne("PMSS.Domain.Entities.Project", "Project")
                         .WithOne("JiraConfig")
                         .HasForeignKey("PMSS.Domain.Entities.JiraConfig", "ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("CreatedByUser");
 
                     b.Navigation("Project");
                 });

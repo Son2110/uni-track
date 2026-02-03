@@ -10,6 +10,7 @@ namespace PMSS.Infrastructure.Services;
 /// <summary>
 /// Service for interacting with Jira REST API (v3)
 /// Uses the new /rest/api/3/search/jql endpoint
+/// Email is provided by authenticated user, API Token from JiraConfig (Admin's shared token)
 /// </summary>
 public class JiraApiService : IJiraApiService
 {
@@ -25,8 +26,13 @@ public class JiraApiService : IJiraApiService
     }
 
     /// <inheritdoc />
-    public async Task<string> FetchRawJiraIssuesAsync(Guid projectId)
+    public async Task<string> FetchRawJiraIssuesAsync(Guid projectId, string userEmail)
     {
+        if (string.IsNullOrWhiteSpace(userEmail))
+        {
+            throw new InvalidOperationException("User email is required for Jira authentication");
+        }
+
         var jiraConfig = await _jiraConfigRepository.GetActiveConfigByProjectIdAsync(projectId);
 
         if (jiraConfig == null)
@@ -35,17 +41,16 @@ public class JiraApiService : IJiraApiService
         }
 
         if (string.IsNullOrWhiteSpace(jiraConfig.JiraUrl) ||
-            string.IsNullOrWhiteSpace(jiraConfig.Email) ||
             string.IsNullOrWhiteSpace(jiraConfig.ApiToken) ||
             string.IsNullOrWhiteSpace(jiraConfig.ProjectKey))
         {
-            throw new InvalidOperationException("Jira configuration is incomplete. Please ensure JiraUrl, Email, ApiToken, and ProjectKey are configured.");
+            throw new InvalidOperationException("Jira configuration is incomplete. Please ensure JiraUrl, ApiToken, and ProjectKey are configured.");
         }
 
         var client = _httpClientFactory.CreateClient();
 
-        // Set up Basic Authentication (Email:ApiToken encoded in Base64)
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{jiraConfig.Email}:{jiraConfig.ApiToken}"));
+        // Set up Basic Authentication (User's Email + Admin's ApiToken encoded in Base64)
+        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{userEmail}:{jiraConfig.ApiToken}"));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 

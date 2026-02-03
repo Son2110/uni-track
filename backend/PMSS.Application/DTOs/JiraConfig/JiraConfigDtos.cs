@@ -8,12 +8,16 @@ public class JiraConfigDto
     public Guid ProjectId { get; set; }
     public string ProjectName { get; set; } = string.Empty;
     public string JiraUrl { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
+    // Email removed - auto-filled from authenticated user
     public string ApiTokenMasked { get; set; } = string.Empty;
     public string ProjectKey { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    
+    // Track who created this config (nullable for backward compatibility)
+    public Guid? CreatedByUserId { get; set; }
+    public string? CreatedByUserName { get; set; }
 }
 
 public class CreateJiraConfigDto
@@ -25,9 +29,7 @@ public class CreateJiraConfigDto
     [Url(ErrorMessage = "Please provide a valid Jira URL")]
     public string JiraUrl { get; set; } = string.Empty;
 
-    [Required]
-    [EmailAddress(ErrorMessage = "Please provide a valid email address")]
-    public string Email { get; set; } = string.Empty;
+    // Email removed - auto-filled from authenticated user
 
     [Required]
     public string ApiToken { get; set; } = string.Empty;
@@ -42,8 +44,7 @@ public class UpdateJiraConfigDto
     [Url(ErrorMessage = "Please provide a valid Jira URL")]
     public string? JiraUrl { get; set; }
 
-    [EmailAddress(ErrorMessage = "Please provide a valid email address")]
-    public string? Email { get; set; }
+    // Email removed
 
     public string? ApiToken { get; set; }
 
