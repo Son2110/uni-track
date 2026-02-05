@@ -205,6 +205,10 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
@@ -215,6 +219,10 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ProjectKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
