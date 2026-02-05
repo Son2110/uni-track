@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.Json;
 using System.Web;
 using PMSS.Application.Interfaces.Repositories;
 using PMSS.Application.Interfaces.Services;
@@ -9,8 +8,8 @@ namespace PMSS.Infrastructure.Services;
 
 /// <summary>
 /// Service for interacting with Jira REST API (v3)
-/// Uses the new /rest/api/3/search/jql endpoint
-/// Email is provided by authenticated user, API Token from JiraConfig (Admin's shared token)
+/// Uses the /rest/api/3/search/jql endpoint
+/// Email and API Token are from JiraConfig (shared credentials)
 /// </summary>
 public class JiraApiService : IJiraApiService
 {
@@ -26,13 +25,8 @@ public class JiraApiService : IJiraApiService
     }
 
     /// <inheritdoc />
-    public async Task<string> FetchRawJiraIssuesAsync(Guid projectId, string userEmail)
+    public async Task<string> FetchRawJiraIssuesAsync(Guid projectId)
     {
-        if (string.IsNullOrWhiteSpace(userEmail))
-        {
-            throw new InvalidOperationException("User email is required for Jira authentication");
-        }
-
         var jiraConfig = await _jiraConfigRepository.GetActiveConfigByProjectIdAsync(projectId);
 
         if (jiraConfig == null)
@@ -40,22 +34,26 @@ public class JiraApiService : IJiraApiService
             throw new InvalidOperationException($"No active Jira configuration found for project ID: {projectId}");
         }
 
-        if (string.IsNullOrWhiteSpace(jiraConfig.JiraUrl) ||
-            string.IsNullOrWhiteSpace(jiraConfig.ApiToken) ||
-            string.IsNullOrWhiteSpace(jiraConfig.ProjectKey))
-        {
-            throw new InvalidOperationException("Jira configuration is incomplete. Please ensure JiraUrl, ApiToken, and ProjectKey are configured.");
-        }
+        if (string.IsNullOrWhiteSpace(jiraConfig.JiraUrl))
+            throw new InvalidOperationException("Jira URL is not configured");
+
+        if (string.IsNullOrWhiteSpace(jiraConfig.Email))
+            throw new InvalidOperationException("Jira Email is not configured");
+
+        if (string.IsNullOrWhiteSpace(jiraConfig.ApiToken))
+            throw new InvalidOperationException("Jira API Token is not configured");
+
+        if (string.IsNullOrWhiteSpace(jiraConfig.ProjectKey))
+            throw new InvalidOperationException("Jira Project Key is not configured");
 
         var client = _httpClientFactory.CreateClient();
 
-        // Set up Basic Authentication (User's Email + Admin's ApiToken encoded in Base64)
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{userEmail}:{jiraConfig.ApiToken}"));
+        // Set up Basic Authentication using shared credentials from JiraConfig
+        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{jiraConfig.Email}:{jiraConfig.ApiToken}"));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        // Build the new Jira search endpoint URL (migrated from /rest/api/3/search to /rest/api/3/search/jql)
-        // Reference: https://developer.atlassian.com/changelog/#CHANGE-2046
+        // Build the Jira search endpoint URL
         var jql = $"project = {jiraConfig.ProjectKey} ORDER BY created DESC";
         var fields = "summary,description,status";
         
