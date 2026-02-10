@@ -7,10 +7,10 @@ using PMSS.Domain.Entities;
 namespace PMSS.API.Controllers;
 
 /// <summary>
-/// Controller for Jira integration endpoints
+/// RESTful API controller for managing Jira integration resources.
+/// Jira configuration and issues are nested under projects following RESTful resource hierarchy.
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
 [Produces("application/json")]
 public class JiraController : ControllerBase
 {
@@ -24,38 +24,43 @@ public class JiraController : ControllerBase
     }
 
     /// <summary>
-    /// Create Jira configuration for a project
+    /// Create Jira configuration for a project (create sub-resource)
     /// </summary>
+    /// <param name="projectId">The unique identifier of the project</param>
     /// <param name="dto">Jira configuration details</param>
     /// <returns>Created Jira configuration</returns>
     /// <response code="201">Returns the created configuration</response>
-    /// <response code="400">If configuration already exists or validation fails</response>
-    [HttpPost("config")]
+    /// <response code="400">If validation fails</response>
+    /// <response code="404">If the project is not found</response>
+    /// <response code="409">If configuration already exists</response>
+    [HttpPost("api/v1/projects/{projectId:guid}/jira-config")]
     [ProducesResponseType(typeof(JiraConfigDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> CreateConfig([FromBody] CreateJiraConfigDto dto)
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateConfig(Guid projectId, [FromBody] CreateJiraConfigDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
-        // Check if config already exists for this project
-        var existing = await _unitOfWork.JiraConfigs.GetByProjectIdAsync(dto.ProjectId);
-        if (existing != null)
-        {
-            return BadRequest(new { error = "Jira configuration already exists for this project. Use PUT to update." });
-        }
-
         // Verify project exists
-        var project = await _unitOfWork.Projects.GetByIdAsync(dto.ProjectId);
+        var project = await _unitOfWork.Projects.GetByIdAsync(projectId);
         if (project == null)
         {
-            return BadRequest(new { error = $"Project with ID {dto.ProjectId} not found." });
+            return NotFound(new { error = $"Project with ID {projectId} not found." });
+        }
+
+        // Check if config already exists for this project
+        var existing = await _unitOfWork.JiraConfigs.GetByProjectIdAsync(projectId);
+        if (existing != null)
+        {
+            return Conflict(new { error = "Jira configuration already exists for this project. Use PUT to update." });
         }
 
         var config = new JiraConfig
         {
             JiraConfigId = Guid.NewGuid(),
-            ProjectId = dto.ProjectId,
+            ProjectId = projectId,
             JiraUrl = dto.JiraUrl.TrimEnd('/'),
             Email = dto.Email,
             ApiToken = dto.ApiToken,
@@ -86,13 +91,13 @@ public class JiraController : ControllerBase
     }
 
     /// <summary>
-    /// Get Jira configuration for a project
+    /// Retrieve Jira configuration for a project (get sub-resource)
     /// </summary>
-    /// <param name="projectId">The PMSS project ID</param>
+    /// <param name="projectId">The unique identifier of the project</param>
     /// <returns>Jira configuration (API token masked)</returns>
     /// <response code="200">Returns the configuration</response>
     /// <response code="404">If no configuration found</response>
-    [HttpGet("config/{projectId:guid}")]
+    [HttpGet("api/v1/projects/{projectId:guid}/jira-config")]
     [ProducesResponseType(typeof(JiraConfigDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetConfig(Guid projectId)
@@ -118,15 +123,17 @@ public class JiraController : ControllerBase
     }
 
     /// <summary>
-    /// Update Jira configuration for a project
+    /// Update Jira configuration for a project (partial update using PATCH)
     /// </summary>
-    /// <param name="projectId">The PMSS project ID</param>
+    /// <param name="projectId">The unique identifier of the project</param>
     /// <param name="dto">Fields to update (only provided fields will be updated)</param>
-    /// <returns>Success message</returns>
+    /// <returns>The updated configuration</returns>
     /// <response code="200">Configuration updated successfully</response>
+    /// <response code="400">If validation fails</response>
     /// <response code="404">If no configuration found</response>
-    [HttpPut("config/{projectId:guid}")]
+    [HttpPatch("api/v1/projects/{projectId:guid}/jira-config")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateConfig(Guid projectId, [FromBody] UpdateJiraConfigDto dto)
     {
@@ -138,7 +145,7 @@ public class JiraController : ControllerBase
         if (config == null)
             return NotFound(new { error = $"No Jira configuration found for project ID: {projectId}" });
 
-        // Update only provided fields
+        // Update only provided fields (PATCH semantics)
         if (!string.IsNullOrWhiteSpace(dto.JiraUrl))
             config.JiraUrl = dto.JiraUrl.TrimEnd('/');
 
@@ -163,13 +170,13 @@ public class JiraController : ControllerBase
     }
 
     /// <summary>
-    /// Delete Jira configuration for a project
+    /// Delete Jira configuration for a project (delete sub-resource)
     /// </summary>
-    /// <param name="projectId">The PMSS project ID</param>
-    /// <returns>No content</returns>
+    /// <param name="projectId">The unique identifier of the project</param>
+    /// <returns>No content on success</returns>
     /// <response code="204">Configuration deleted successfully</response>
     /// <response code="404">If no configuration found</response>
-    [HttpDelete("config/{projectId:guid}")]
+    [HttpDelete("api/v1/projects/{projectId:guid}/jira-config")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteConfig(Guid projectId)
@@ -186,14 +193,14 @@ public class JiraController : ControllerBase
     }
 
     /// <summary>
-    /// Test Jira connection for a project
+    /// Test Jira connection for a project (action on sub-resource)
     /// </summary>
-    /// <param name="projectId">The PMSS project ID</param>
+    /// <param name="projectId">The unique identifier of the project</param>
     /// <returns>Connection test result</returns>
     /// <response code="200">Connection successful</response>
     /// <response code="400">Connection failed</response>
     /// <response code="404">If no configuration found</response>
-    [HttpPost("config/{projectId:guid}/test")]
+    [HttpPost("api/v1/projects/{projectId:guid}/jira-config/test-connection")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -219,20 +226,20 @@ public class JiraController : ControllerBase
     }
 
     /// <summary>
-    /// Fetches raw Jira issues for a specific project
+    /// Retrieve Jira issues for a project (get nested resource)
     /// </summary>
-    /// <param name="projectId">The PMSS project ID linked to a Jira configuration</param>
-    /// <returns>Raw JSON response from Jira containing issues with summary, description, and status fields</returns>
-    /// <response code="200">Returns the raw Jira issues JSON</response>
-    /// <response code="400">If the Jira configuration is invalid or incomplete</response>
-    /// <response code="404">If no Jira configuration is found for the project</response>
+    /// <param name="projectId">The unique identifier of the project</param>
+    /// <returns>Raw JSON response from Jira containing issues</returns>
+    /// <response code="200">Returns the Jira issues</response>
+    /// <response code="400">If the Jira configuration is invalid</response>
+    /// <response code="404">If no Jira configuration is found</response>
     /// <response code="502">If the Jira API request fails</response>
-    [HttpGet("fetch/{projectId:guid}")]
+    [HttpGet("api/v1/projects/{projectId:guid}/jira-issues")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status502BadGateway)]
-    public async Task<IActionResult> FetchJiraIssues(Guid projectId)
+    public async Task<IActionResult> GetJiraIssues(Guid projectId)
     {
         try
         {
