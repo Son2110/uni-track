@@ -4,8 +4,12 @@ using PMSS.Application.Interfaces.Services;
 
 namespace PMSS.API.Controllers;
 
+/// <summary>
+/// RESTful API controller for managing class resources
+/// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/classes")]
+[Produces("application/json")]
 public class ClassesController : ControllerBase
 {
     private readonly IClassService _classService;
@@ -15,9 +19,44 @@ public class ClassesController : ControllerBase
         _classService = classService;
     }
 
+    /// <summary>
+    /// Retrieve a collection of classes with optional filtering and pagination.
+    /// Supports filtering by teacherId, semesterId, and courseId via query parameters.
+    /// </summary>
+    /// <param name="filterParams">Query parameters for filtering (teacherId, semesterId, courseId) and pagination</param>
+    /// <returns>A paginated collection of classes</returns>
+    /// <response code="200">Returns the list of classes</response>
+    /// <response code="400">If the filter parameters are invalid</response>
     [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] ClassFilterParams filterParams)
     {
+        // Handle filtering via query params (RESTful approach)
+        if (filterParams.TeacherId.HasValue)
+        {
+            var teacherResult = await _classService.GetClassesByTeacherIdAsync(filterParams.TeacherId.Value);
+            if (!teacherResult.Success)
+                return BadRequest(teacherResult);
+            return Ok(teacherResult);
+        }
+
+        if (filterParams.SemesterId.HasValue)
+        {
+            var semesterResult = await _classService.GetClassesBySemesterIdAsync(filterParams.SemesterId.Value);
+            if (!semesterResult.Success)
+                return BadRequest(semesterResult);
+            return Ok(semesterResult);
+        }
+
+        if (filterParams.CourseId.HasValue)
+        {
+            var courseResult = await _classService.GetClassesByCourseIdAsync(filterParams.CourseId.Value);
+            if (!courseResult.Success)
+                return BadRequest(courseResult);
+            return Ok(courseResult);
+        }
+
         var result = await _classService.GetAllClassesAsync(filterParams);
 
         if (!result.Success)
@@ -26,7 +65,16 @@ public class ClassesController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{id}")]
+    /// <summary>
+    /// Retrieve a specific class by its unique identifier
+    /// </summary>
+    /// <param name="id">The unique identifier of the class</param>
+    /// <returns>The requested class resource</returns>
+    /// <response code="200">Returns the class</response>
+    /// <response code="404">If the class is not found</response>
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _classService.GetClassByIdAsync(id);
@@ -37,40 +85,16 @@ public class ClassesController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("teacher/{teacherId}")]
-    public async Task<IActionResult> GetByTeacherId(Guid teacherId)
-    {
-        var result = await _classService.GetClassesByTeacherIdAsync(teacherId);
-
-        if (!result.Success)
-            return BadRequest(result);
-
-        return Ok(result);
-    }
-
-    [HttpGet("semester/{semesterId}")]
-    public async Task<IActionResult> GetBySemesterId(Guid semesterId)
-    {
-        var result = await _classService.GetClassesBySemesterIdAsync(semesterId);
-
-        if (!result.Success)
-            return BadRequest(result);
-
-        return Ok(result);
-    }
-
-    [HttpGet("course/{courseId}")]
-    public async Task<IActionResult> GetByCourseId(Guid courseId)
-    {
-        var result = await _classService.GetClassesByCourseIdAsync(courseId);
-
-        if (!result.Success)
-            return BadRequest(result);
-
-        return Ok(result);
-    }
-
+    /// <summary>
+    /// Create a new class resource
+    /// </summary>
+    /// <param name="dto">The class creation data</param>
+    /// <returns>The newly created class</returns>
+    /// <response code="201">Returns the newly created class</response>
+    /// <response code="400">If the request data is invalid</response>
     [HttpPost]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateClassDto dto)
     {
         if (!ModelState.IsValid)
@@ -84,7 +108,19 @@ public class ClassesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.ClassId }, result);
     }
 
-    [HttpPut("{id}")]
+    /// <summary>
+    /// Replace an existing class resource
+    /// </summary>
+    /// <param name="id">The unique identifier of the class to update</param>
+    /// <param name="dto">The complete class data for replacement</param>
+    /// <returns>The updated class resource</returns>
+    /// <response code="200">Returns the updated class</response>
+    /// <response code="400">If the request data is invalid</response>
+    /// <response code="404">If the class is not found</response>
+    [HttpPut("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateClassDto dto)
     {
         if (!ModelState.IsValid)
@@ -98,14 +134,23 @@ public class ClassesController : ControllerBase
         return Ok(result);
     }
 
-    [HttpDelete("{id}")]
+    /// <summary>
+    /// Delete a class resource
+    /// </summary>
+    /// <param name="id">The unique identifier of the class to delete</param>
+    /// <returns>No content on success</returns>
+    /// <response code="204">Class deleted successfully</response>
+    /// <response code="404">If the class is not found</response>
+    [HttpDelete("{id:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
     {
         var result = await _classService.DeleteClassAsync(id);
 
         if (!result.Success)
-            return BadRequest(result);
+            return NotFound(result);
 
-        return Ok(result);
+        return NoContent();
     }
 }
