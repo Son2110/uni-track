@@ -15,50 +15,50 @@ try
 
     builder.Host.UseSerilog();
 
-builder.Services.AddControllers();
+    builder.Services.AddControllers();
 
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen();
 
-builder.Services.AddInfrastructure(builder.Configuration);
+    builder.Services.AddInfrastructure(builder.Configuration);
 
-// Add GraphQL with query-only support
-builder.Services
-    .AddGraphQLServer()
-    .AddQueryType<Query>()
-    .AddProjections()
-    .AddFiltering()
-    .AddSorting()
-    .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = builder.Environment.IsDevelopment());
+    // Add GraphQL with query-only support
+    builder.Services
+        .AddGraphQLServer()
+        .AddQueryType<Query>()
+        .AddProjections()
+        .AddFiltering()
+        .AddSorting()
+        .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = builder.Environment.IsDevelopment());
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowAll", policy =>
+    builder.Services.AddCors(options =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        options.AddPolicy("AllowAll", policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        });
     });
-});
 
-var app = builder.Build();
+    var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
 
-app.UseMiddleware<ExceptionHandlingMiddleware>();
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-app.UseHttpsRedirection();
+    app.UseHttpsRedirection();
 
-app.UseCors("AllowAll");
+    app.UseCors("AllowAll");
 
-// Map GraphQL endpoint (GET only for queries)
-app.MapGraphQL("/graphql");
+    // Map GraphQL endpoint (GET only for queries)
+    app.MapGraphQL("/graphql");
 
-app.UseAuthorization();
+    app.UseAuthorization();
 
     app.MapControllers();
 
