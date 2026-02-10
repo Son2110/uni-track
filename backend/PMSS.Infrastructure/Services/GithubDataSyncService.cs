@@ -109,7 +109,7 @@ public class GithubDataSyncService(
         var result = new GithubSyncResultDto
         {
             TotalRepositories = repos.Count,
-            SyncedAt = DateTime.UtcNow
+            SyncedAt = DateTime.Now
         };
 
         foreach (var repo in repos)
@@ -133,7 +133,7 @@ public class GithubDataSyncService(
             GithubRepoId = repo.GithubRepoId,
             RepoOwnerName = repo.RepoOwnerName,
             RepoName = repo.RepoName,
-            SyncedAt = DateTime.UtcNow
+            SyncedAt = DateTime.Now
         };
 
         try
@@ -155,7 +155,7 @@ public class GithubDataSyncService(
             var allContributors = await unitOfWork.RepoContributors.GetAllAsync();
             var repoContributors = allContributors.Where(c => c.GithubRepoId == repo.GithubRepoId).ToList();
 
-            var now = DateTime.UtcNow;
+            var now = DateTime.Now;
             int totalCommits = 0, totalAdditions = 0, totalDeletions = 0;
 
             // Group contributions by week timestamp to aggregate weekly data

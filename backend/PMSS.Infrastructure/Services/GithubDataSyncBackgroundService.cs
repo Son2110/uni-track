@@ -32,7 +32,7 @@ public class GithubDataSyncBackgroundService : BackgroundService
             {
                 var delayUntilMidnight = CalculateDelayUntilMidnight();
                 _logger.LogInformation("Next GitHub data sync scheduled in {Delay} at {Time}",
-                    delayUntilMidnight, DateTime.UtcNow.Add(delayUntilMidnight));
+                    delayUntilMidnight, DateTime.Now.Add(delayUntilMidnight));
 
                 await Task.Delay(delayUntilMidnight, stoppingToken);
 
@@ -59,7 +59,7 @@ public class GithubDataSyncBackgroundService : BackgroundService
 
     private async Task ExecuteSyncAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("Starting scheduled GitHub data synchronization at {Time}", DateTime.UtcNow);
+        _logger.LogInformation("Starting scheduled GitHub data synchronization at {Time}", DateTime.Now);
 
         try
         {
@@ -87,7 +87,7 @@ public class GithubDataSyncBackgroundService : BackgroundService
 
     private static TimeSpan CalculateDelayUntilMidnight()
     {
-        var now = DateTime.UtcNow;
+        var now = DateTime.Now;
         var nextMidnight = now.Date.AddDays(1);
         var delay = nextMidnight - now;
 
