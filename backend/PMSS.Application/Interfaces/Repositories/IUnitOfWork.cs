@@ -11,6 +11,8 @@ public interface IUnitOfWork : IDisposable
     IProjectMemberRepository ProjectMembers { get; }
     IGithubRepoRepository GithubRepos { get; }
     IRepoContributorRepository RepoContributors { get; }
+    IWeeklyContributionRepository WeeklyContributions { get; }
+    IUserWeeklyContributionRepository UserWeeklyContributions { get; }
     IJiraConfigRepository JiraConfigs { get; }
     IAccessRequestRepository AccessRequests { get; }
     

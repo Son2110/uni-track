@@ -298,7 +298,7 @@ public class GithubRepoService : IGithubRepoService
                 UserId = userId,
                 GithubUsername = user.GithubUsername ?? user.Email,
                 GithubEmail = user.GithubEmail ?? user.Email,
-                AddedAt = DateTime.UtcNow
+                AddedAt = DateTime.Now
             };
 
             await _unitOfWork.RepoContributors.AddAsync(contributor);

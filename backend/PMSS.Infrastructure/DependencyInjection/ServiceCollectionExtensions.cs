@@ -33,6 +33,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IGithubRepoRepository, GithubRepoRepository>();
         services.AddScoped<IRepoContributorRepository, RepoContributorRepository>();
+        services.AddScoped<IWeeklyContributionRepository, WeeklyContributionRepository>();
+        services.AddScoped<IUserWeeklyContributionRepository, UserWeeklyContributionRepository>();
         services.AddScoped<IJiraConfigRepository, JiraConfigRepository>();
         services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
         
@@ -50,6 +52,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IProjectMemberService, ProjectMemberService>();
         services.AddScoped<IGithubRepoService, GithubRepoService>();
+        services.AddScoped<IGithubDataSyncService, GithubDataSyncService>();
+
+        // Register background service for automated GitHub data sync at midnight
+        services.AddHostedService<GithubDataSyncBackgroundService>();
 
         return services;
     }
