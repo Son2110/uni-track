@@ -9,9 +9,9 @@ using PMSS.Domain.Entities;
 
 namespace PMSS.Infrastructure.Services;
 
-public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiService, ILogger<ProjectService> logger, IMapper mapper) : IProjectService
+public class ProjectService(IUnitOfWork unitOfWork, ILogger<ProjectService> logger, IMapper mapper) : IProjectService
 {
-    private record ProjectData(Project Project, Semester Semester, List<GithubRepo> Repos, List<RepoContributor> Contributors, List<User> Users);
+    private record ProjectData(Project Project, Semester Semester, List<GithubRepo> Repos, List<RepoContributor> Contributors, List<User> Users, List<WeeklyContribution> WeeklyContributions);
 
     public async Task<ApiResponse<PagedResult<ProjectDto>>> GetAllProjectsAsync(ProjectFilterParams filterParams)
     {
@@ -162,26 +162,23 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             if (!projectDataResult.IsSuccess)
                 return ApiResponse<ProjectGithubContributionDto>.ErrorResponse(projectDataResult.ErrorMessage!);
 
-            var (project, semester, githubRepos, contributors, users) = projectDataResult.Data!;
+            var (project, semester, githubRepos, contributors, users, weeklyContributions) = projectDataResult.Data!;
 
             logger.LogInformation(
-                "Fetching GitHub statistics for project {ProjectId} across {RepoCount} repositories. Semester: {SemesterStart} to {SemesterEnd}",
+                "Retrieving GitHub statistics for project {ProjectId} from database. {RepoCount} repositories. Semester: {SemesterStart} to {SemesterEnd}",
                 projectId, githubRepos.Count, semester.StartDate, semester.EndDate);
 
-            var (allCommitActivity, allContributorStats) = await FetchAllGitHubDataAsync(githubRepos, contributors, users);
+            // Filter weekly contributions by semester
+            var filteredContributions = weeklyContributions
+                .Where(wc => IsWithinSemesterPeriod(wc.WeekStart, semester))
+                .ToList();
 
-            logger.LogDebug("Raw GitHub data: {CommitWeeks} commit weeks, {ContributorCount} contributors",
-                allCommitActivity.Count, allContributorStats.Count);
+            logger.LogDebug("After filtering by semester: {ContributionCount} weekly contributions",
+                filteredContributions.Count);
 
-            var filteredCommitActivity = FilterCommitActivityBySemester(allCommitActivity, semester);
-            var filteredContributorStats = FilterContributorStatsBySemester(allContributorStats, semester);
-
-            logger.LogDebug("After filtering: {CommitWeeks} commit weeks, {ContributorCount} contributors",
-                filteredCommitActivity.Count, filteredContributorStats.Count);
-
-            SortContributorWeeklyActivity(filteredContributorStats);
-
-            var response = BuildContributionResponse(project, semester, githubRepos, filteredCommitActivity, filteredContributorStats);
+            // Build the response from database data
+            var response = BuildContributionResponseFromDatabase(
+                project, semester, githubRepos, contributors, users, filteredContributions);
 
             logger.LogInformation(
                 "GitHub contributions for project {ProjectId}: {TotalCommits} commits, {TotalAdditions} additions, {TotalDeletions} deletions",
@@ -223,208 +220,109 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
         var allUsers = await unitOfWork.Users.GetAllAsync();
         var users = allUsers.Where(u => userIds.Contains(u.UserId)).ToList();
 
-        return (true, null, new ProjectData(project, semester, githubRepos, contributors, users));
+        // Fetch weekly contributions with user contributions from database
+        var weeklyContributions = (await unitOfWork.WeeklyContributions.GetWithUserContributionsByRepoIdsAsync(repoIds)).ToList();
+
+        return (true, null, new ProjectData(project, semester, githubRepos, contributors, users, weeklyContributions));
     }
 
-    private async Task<(Dictionary<long, int> CommitActivity, Dictionary<string, ContributorStatsDto> ContributorStats)> FetchAllGitHubDataAsync(
-        List<GithubRepo> githubRepos,
-        List<RepoContributor> contributors,
-        List<User> users)
-    {
-        var allCommitActivity = new Dictionary<long, int>();
-        var contributorStatsMap = new Dictionary<string, ContributorStatsDto>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var repo in githubRepos)
-        {
-            try
-            {
-                logger.LogDebug("Fetching GitHub data for repo: {Owner}/{Repo}", repo.RepoOwnerName, repo.RepoName);
-                await AggregateCommitActivityAsync(repo, allCommitActivity);
-                await AggregateContributorStatsAsync(repo, contributors, users, contributorStatsMap);
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Failed to fetch GitHub data for repo {Owner}/{Repo}", repo.RepoOwnerName, repo.RepoName);
-            }
-        }
-
-        return (allCommitActivity, contributorStatsMap);
-    }
-
-    private async Task AggregateCommitActivityAsync(GithubRepo repo, Dictionary<long, int> commitActivity)
-    {
-        var repoActivity = await githubApiService.GetRepositoryCommitActivityAsync(
-            repo.RepoOwnerName, repo.RepoName, repo.ApiToken);
-
-        if (repoActivity is not { Count: > 0 })
-        {
-            logger.LogWarning("No commit activity for repo {Owner}/{Repo}", repo.RepoOwnerName, repo.RepoName);
-            return;
-        }
-
-        foreach (var activity in repoActivity)
-        {
-            commitActivity.TryGetValue(activity.Timestamp, out var existing);
-            commitActivity[activity.Timestamp] = existing + activity.Total;
-        }
-    }
-
-    private async Task AggregateContributorStatsAsync(
-        GithubRepo repo,
-        List<RepoContributor> contributors,
-        List<User> users,
-        Dictionary<string, ContributorStatsDto> contributorStatsMap)
-    {
-        var repoStats = await githubApiService.GetRepositoryContributorStatsAsync(
-            repo.RepoOwnerName, repo.RepoName, repo.ApiToken);
-
-        if (repoStats?.Contributors is not { Count: > 0 })
-        {
-            logger.LogWarning("No contributor stats for repo {Owner}/{Repo}", repo.RepoOwnerName, repo.RepoName);
-            return;
-        }
-
-        foreach (var contributor in repoStats.Contributors)
-        {
-            var stats = GetOrCreateContributorStats(contributor, contributors, users, contributorStatsMap);
-            AggregateWeeklyActivity(contributor, stats);
-        }
-    }
-
-    private static void AggregateWeeklyActivity(GithubContributor contributor, ContributorStatsDto stats)
-    {
-        foreach (var week in contributor.Weeks)
-        {
-            var weekDate = DateTimeOffset.FromUnixTimeSeconds(week.Timestamp).DateTime;
-            var existingWeek = stats.WeeklyActivity.FirstOrDefault(w => w.WeekStart.Date == weekDate.Date);
-
-            if (existingWeek != null)
-            {
-                existingWeek.Commits += week.Commits;
-                existingWeek.Additions += week.Additions;
-                existingWeek.Deletions += week.Deletions;
-            }
-            else
-            {
-                stats.WeeklyActivity.Add(new WeeklyContributorActivityDto
-                {
-                    WeekStart = weekDate,
-                    WeekEnd = weekDate.AddDays(7),
-                    Commits = week.Commits,
-                    Additions = week.Additions,
-                    Deletions = week.Deletions
-                });
-            }
-
-            stats.TotalCommits += week.Commits;
-            stats.TotalAdditions += week.Additions;
-            stats.TotalDeletions += week.Deletions;
-        }
-    }
-
-    private static Dictionary<long, int> FilterCommitActivityBySemester(Dictionary<long, int> allCommitActivity, Semester semester)
-    {
-        return allCommitActivity
-            .Where(kvp => IsWithinSemesterPeriod(DateTimeOffset.FromUnixTimeSeconds(kvp.Key).DateTime, semester))
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-    }
-
-    private static Dictionary<string, ContributorStatsDto> FilterContributorStatsBySemester(
-        Dictionary<string, ContributorStatsDto> allContributorStats,
-        Semester semester)
-    {
-        var filtered = new Dictionary<string, ContributorStatsDto>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var (key, contributor) in allContributorStats)
-        {
-            var filteredWeeks = contributor.WeeklyActivity
-                .Where(w => IsWithinSemesterPeriod(w.WeekStart, semester))
-                .ToList();
-
-            if (filteredWeeks.Count == 0 && contributor.WeeklyActivity.Count > 0)
-                continue;
-
-            var filteredStats = new ContributorStatsDto
-            {
-                GithubUsername = contributor.GithubUsername,
-                GithubEmail = contributor.GithubEmail,
-                UserId = contributor.UserId,
-                UserFullName = contributor.UserFullName,
-                TotalCommits = filteredWeeks.Sum(w => w.Commits),
-                TotalAdditions = filteredWeeks.Sum(w => w.Additions),
-                TotalDeletions = filteredWeeks.Sum(w => w.Deletions),
-                WeeklyActivity = filteredWeeks
-            };
-
-            if (filteredStats.TotalCommits > 0 || filteredStats.TotalAdditions > 0 || filteredStats.TotalDeletions > 0)
-                filtered[key] = filteredStats;
-        }
-
-        return filtered;
-    }
-
-    private static ContributorStatsDto GetOrCreateContributorStats(
-        GithubContributor contributor,
-        List<RepoContributor> contributors,
-        List<User> users,
-        Dictionary<string, ContributorStatsDto> contributorStatsMap)
-    {
-        if (contributorStatsMap.TryGetValue(contributor.Login, out var existingStats))
-            return existingStats;
-
-        var repoContributor = contributors.FirstOrDefault(c =>
-            c.GithubUsername.Equals(contributor.Login, StringComparison.OrdinalIgnoreCase));
-        var user = repoContributor?.UserId.HasValue == true
-            ? users.FirstOrDefault(u => u.UserId == repoContributor.UserId!.Value)
-            : null;
-
-        var newStats = new ContributorStatsDto
-        {
-            GithubUsername = contributor.Login,
-            GithubEmail = contributor.Email,
-            UserId = repoContributor?.UserId,
-            UserFullName = user?.Name,
-            TotalCommits = 0,
-            TotalAdditions = 0,
-            TotalDeletions = 0,
-            WeeklyActivity = []
-        };
-
-        contributorStatsMap[contributor.Login] = newStats;
-        return newStats;
-    }
-
-    private static bool IsWithinSemesterPeriod(DateTime date, Semester semester) =>
-        date >= semester.StartDate && date <= semester.EndDate;
-
-    private static void SortContributorWeeklyActivity(Dictionary<string, ContributorStatsDto> contributorStats)
-    {
-        foreach (var contributor in contributorStats.Values)
-        {
-            contributor.WeeklyActivity = [.. contributor.WeeklyActivity.OrderBy(w => w.WeekStart)];
-        }
-    }
-
-    private static ProjectGithubContributionDto BuildContributionResponse(
+    private static ProjectGithubContributionDto BuildContributionResponseFromDatabase(
         Project project,
         Semester semester,
         List<GithubRepo> githubRepos,
-        Dictionary<long, int> commitActivity,
-        Dictionary<string, ContributorStatsDto> contributorStats)
+        List<RepoContributor> contributors,
+        List<User> users,
+        List<WeeklyContribution> weeklyContributions)
     {
-        var overallCommitsOverTime = commitActivity
-            .OrderBy(kvp => kvp.Key)
-            .Select(kvp =>
+        // Build overall commits over time (aggregated across all repos)
+        var commitsOverTime = weeklyContributions
+            .GroupBy(wc => wc.WeekTimestamp)
+            .OrderBy(g => g.Key)
+            .Select(g => new WeeklyCommitDto
             {
-                var weekStart = DateTimeOffset.FromUnixTimeSeconds(kvp.Key).DateTime;
-                return new WeeklyCommitDto
-                {
-                    WeekStart = weekStart,
-                    WeekEnd = weekStart.AddDays(7),
-                    CommitCount = kvp.Value
-                };
+                WeekStart = g.First().WeekStart,
+                WeekEnd = g.First().WeekEnd,
+                CommitCount = g.Sum(wc => wc.TotalCommits)
             })
             .ToList();
+
+        // Build contributor stats from UserWeeklyContributions (aggregated across all repos)
+        var contributorStatsMap = new Dictionary<string, ContributorStatsDto>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var weeklyContribution in weeklyContributions)
+        {
+            foreach (var userContrib in weeklyContribution.UserContributions)
+            {
+                if (!contributorStatsMap.TryGetValue(userContrib.GithubUsername, out var stats))
+                {
+                    // Find matching repo contributor and user
+                    var repoContributor = contributors.FirstOrDefault(c =>
+                        c.GithubUsername.Equals(userContrib.GithubUsername, StringComparison.OrdinalIgnoreCase));
+                    var user = userContrib.UserId.HasValue
+                        ? users.FirstOrDefault(u => u.UserId == userContrib.UserId.Value)
+                        : (repoContributor?.UserId.HasValue == true
+                            ? users.FirstOrDefault(u => u.UserId == repoContributor.UserId!.Value)
+                            : null);
+
+                    stats = new ContributorStatsDto
+                    {
+                        GithubUsername = userContrib.GithubUsername,
+                        GithubEmail = repoContributor?.GithubEmail,
+                        UserId = userContrib.UserId ?? repoContributor?.UserId,
+                        UserFullName = user?.Name,
+                        TotalCommits = 0,
+                        TotalAdditions = 0,
+                        TotalDeletions = 0,
+                        WeeklyActivity = []
+                    };
+                    contributorStatsMap[userContrib.GithubUsername] = stats;
+                }
+
+                // Check if this week already exists (for aggregation across repos)
+                var existingWeek = stats.WeeklyActivity.FirstOrDefault(w => w.WeekStart.Date == weeklyContribution.WeekStart.Date);
+                if (existingWeek != null)
+                {
+                    existingWeek.Commits += userContrib.Commits;
+                    existingWeek.Additions += userContrib.Additions;
+                    existingWeek.Deletions += userContrib.Deletions;
+                }
+                else
+                {
+                    stats.WeeklyActivity.Add(new WeeklyContributorActivityDto
+                    {
+                        WeekStart = weeklyContribution.WeekStart,
+                        WeekEnd = weeklyContribution.WeekEnd,
+                        Commits = userContrib.Commits,
+                        Additions = userContrib.Additions,
+                        Deletions = userContrib.Deletions
+                    });
+                }
+
+                stats.TotalCommits += userContrib.Commits;
+                stats.TotalAdditions += userContrib.Additions;
+                stats.TotalDeletions += userContrib.Deletions;
+            }
+        }
+
+        // Sort weekly activity for each contributor
+        foreach (var stats in contributorStatsMap.Values)
+        {
+            stats.WeeklyActivity = [.. stats.WeeklyActivity.OrderBy(w => w.WeekStart)];
+        }
+
+        // Build repository info with totals from cached data
+        var repositories = githubRepos.Select(r => new RepoContributionDto
+        {
+            GithubRepoId = r.GithubRepoId,
+            RepoOwnerName = r.RepoOwnerName,
+            RepoName = r.RepoName,
+            RepoUrl = $"https://github.com/{r.RepoOwnerName}/{r.RepoName}",
+            TotalCommits = r.TotalCommits,
+            TotalAdditions = r.TotalAdditions,
+            TotalDeletions = r.TotalDeletions,
+            LastSyncedAt = r.LastSyncedAt
+        }).ToList();
 
         return new ProjectGithubContributionDto
         {
@@ -432,20 +330,19 @@ public class ProjectService(IUnitOfWork unitOfWork, IGithubApiService githubApiS
             ProjectName = project.Name,
             SemesterStartDate = semester.StartDate,
             SemesterEndDate = semester.EndDate,
-            TotalCommitsInSemester = overallCommitsOverTime.Sum(w => w.CommitCount),
-            TotalAdditionsInSemester = contributorStats.Values.Sum(c => c.TotalAdditions),
-            TotalDeletionsInSemester = contributorStats.Values.Sum(c => c.TotalDeletions),
-            Repositories = githubRepos.Select(r => new RepoContributionDto
-            {
-                GithubRepoId = r.GithubRepoId,
-                RepoOwnerName = r.RepoOwnerName,
-                RepoName = r.RepoName,
-                RepoUrl = $"https://github.com/{r.RepoOwnerName}/{r.RepoName}"
-            }).ToList(),
-            OverallCommitsOverTime = overallCommitsOverTime,
-            Contributors = [.. contributorStats.Values.OrderByDescending(c => c.TotalCommits)]
+            TotalCommitsInSemester = commitsOverTime.Sum(w => w.CommitCount),
+            TotalAdditionsInSemester = contributorStatsMap.Values.Sum(c => c.TotalAdditions),
+            TotalDeletionsInSemester = contributorStatsMap.Values.Sum(c => c.TotalDeletions),
+            Repositories = repositories,
+            OverallCommitsOverTime = commitsOverTime,
+            Contributors = [.. contributorStatsMap.Values
+                .Where(c => c.TotalCommits > 0 || c.TotalAdditions > 0 || c.TotalDeletions > 0)
+                .OrderByDescending(c => c.TotalCommits)]
         };
     }
+
+    private static bool IsWithinSemesterPeriod(DateTime date, Semester semester) =>
+        date >= semester.StartDate && date <= semester.EndDate;
 
     private static IQueryable<Project> ApplySorting(IQueryable<Project> query, string? sortBy, bool descending)
     {

@@ -23,6 +23,15 @@ public class GithubRepoConfiguration : IEntityTypeConfiguration<GithubRepo>
         
         builder.Property(gr => gr.ApiToken)
             .HasMaxLength(255);
+
+        builder.Property(gr => gr.TotalCommits)
+            .HasDefaultValue(0);
+
+        builder.Property(gr => gr.TotalAdditions)
+            .HasDefaultValue(0);
+
+        builder.Property(gr => gr.TotalDeletions)
+            .HasDefaultValue(0);
         
         builder.HasOne(gr => gr.Project)
             .WithMany(p => p.GithubRepos)
