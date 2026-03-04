@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.ProjectMember;
 using PMSS.Application.Interfaces.Services;
@@ -10,6 +11,7 @@ namespace PMSS.API.Controllers;
 /// </summary>
 [ApiController]
 [Produces("application/json")]
+[Authorize]
 public class ProjectMembersController : ControllerBase
 {
     private readonly IProjectMemberService _projectMemberService;

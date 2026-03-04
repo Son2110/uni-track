@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.ClassEnrollment;
 using PMSS.Application.Interfaces.Services;
@@ -10,6 +11,7 @@ namespace PMSS.API.Controllers;
 /// </summary>
 [ApiController]
 [Produces("application/json")]
+[Authorize]
 public class ClassEnrollmentsController : ControllerBase
 {
     private readonly IClassEnrollmentService _enrollmentService;
@@ -130,6 +132,7 @@ public class ClassEnrollmentsController : ControllerBase
     /// <response code="400">If the request data is invalid</response>
     /// <response code="409">If the student is already enrolled</response>
     [HttpPost("api/v1/classes/{classId:guid}/enrollments")]
+    [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -161,6 +164,7 @@ public class ClassEnrollmentsController : ControllerBase
     /// <response code="200">Returns the bulk enrollment result</response>
     /// <response code="400">If the request data is invalid</response>
     [HttpPost("api/v1/classes/{classId:guid}/enrollments/bulk")]
+    [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> BulkEnrollStudents(Guid classId, [FromBody] BulkEnrollmentDto dto)
@@ -188,6 +192,7 @@ public class ClassEnrollmentsController : ControllerBase
     /// <response code="204">Enrollment deleted successfully</response>
     /// <response code="404">If the enrollment is not found</response>
     [HttpDelete("api/v1/classes/{classId:guid}/enrollments/{userId:guid}")]
+    [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UnenrollStudent(Guid classId, Guid userId)

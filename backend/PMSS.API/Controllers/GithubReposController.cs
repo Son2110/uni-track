@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.GithubRepo;
 using PMSS.Application.Interfaces.Services;
@@ -10,6 +12,7 @@ namespace PMSS.API.Controllers;
 /// </summary>
 [ApiController]
 [Produces("application/json")]
+[Authorize]
 public class GithubReposController : ControllerBase
 {
     private readonly IGithubRepoService _githubRepoService;
@@ -64,7 +67,6 @@ public class GithubReposController : ControllerBase
     /// Create a new GitHub repository resource
     /// </summary>
     /// <param name="dto">The repository creation data</param>
-    /// <param name="userId">The ID of the user creating the repository (from header)</param>
     /// <returns>The newly created repository</returns>
     /// <response code="201">Returns the newly created repository</response>
     /// <response code="400">If the request data is invalid</response>
@@ -73,11 +75,12 @@ public class GithubReposController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public async Task<IActionResult> Create([FromBody] CreateGithubRepoDto dto, [FromHeader(Name = "X-User-Id")] Guid userId)
+    public async Task<IActionResult> Create([FromBody] CreateGithubRepoDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await _githubRepoService.CreateRepoAsync(dto, userId);
 
         if (!result.Success)
@@ -91,7 +94,6 @@ public class GithubReposController : ControllerBase
     /// </summary>
     /// <param name="id">The unique identifier of the repository to update</param>
     /// <param name="dto">The complete repository data for replacement</param>
-    /// <param name="userId">The ID of the user performing the update (from header)</param>
     /// <returns>The updated repository resource</returns>
     /// <response code="200">Returns the updated repository</response>
     /// <response code="400">If the request data is invalid</response>
@@ -102,11 +104,12 @@ public class GithubReposController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateGithubRepoDto dto, [FromHeader(Name = "X-User-Id")] Guid userId)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateGithubRepoDto dto)
     {
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await _githubRepoService.UpdateRepoAsync(id, dto, userId);
 
         if (!result.Success)
@@ -119,7 +122,6 @@ public class GithubReposController : ControllerBase
     /// Delete a GitHub repository resource
     /// </summary>
     /// <param name="id">The unique identifier of the repository to delete</param>
-    /// <param name="userId">The ID of the user performing the deletion (from header)</param>
     /// <returns>No content on success</returns>
     /// <response code="204">Repository deleted successfully</response>
     /// <response code="403">If the user is not authorized to delete</response>
@@ -128,8 +130,9 @@ public class GithubReposController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(Guid id, [FromHeader(Name = "X-User-Id")] Guid userId)
+    public async Task<IActionResult> Delete(Guid id)
     {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await _githubRepoService.DeleteRepoAsync(id, userId);
 
         if (!result.Success)
@@ -183,7 +186,6 @@ public class GithubReposController : ControllerBase
     /// </summary>
     /// <param name="repoId">The unique identifier of the repository</param>
     /// <param name="userId">The unique identifier of the user to add as contributor</param>
-    /// <param name="addedByUserId">The ID of the user performing the action (from header)</param>
     /// <returns>Success status</returns>
     /// <response code="201">Contributor added successfully</response>
     /// <response code="400">If the request is invalid</response>
@@ -194,8 +196,9 @@ public class GithubReposController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> AddContributor(Guid repoId, Guid userId, [FromHeader(Name = "X-User-Id")] Guid addedByUserId)
+    public async Task<IActionResult> AddContributor(Guid repoId, Guid userId)
     {
+        var addedByUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await _githubRepoService.AddContributorToRepoAsync(repoId, userId, addedByUserId);
 
         if (!result.Success)
@@ -209,7 +212,6 @@ public class GithubReposController : ControllerBase
     /// </summary>
     /// <param name="repoId">The unique identifier of the repository</param>
     /// <param name="userId">The unique identifier of the user to remove</param>
-    /// <param name="removedByUserId">The ID of the user performing the action (from header)</param>
     /// <returns>No content on success</returns>
     /// <response code="204">Contributor removed successfully</response>
     /// <response code="403">If the user is not authorized</response>
@@ -218,8 +220,9 @@ public class GithubReposController : ControllerBase
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> RemoveContributor(Guid repoId, Guid userId, [FromHeader(Name = "X-User-Id")] Guid removedByUserId)
+    public async Task<IActionResult> RemoveContributor(Guid repoId, Guid userId)
     {
+        var removedByUserId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var result = await _githubRepoService.RemoveContributorFromRepoAsync(repoId, userId, removedByUserId);
 
         if (!result.Success)

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.Interfaces.Services;
 
@@ -11,6 +12,7 @@ namespace PMSS.API.Controllers;
 [ApiController]
 [Route("api/v1/github-sync")]
 [Produces("application/json")]
+[Authorize]
 public class GithubSyncController : ControllerBase
 {
     private readonly IGithubDataSyncService _githubDataSyncService;
@@ -47,7 +49,7 @@ public class GithubSyncController : ControllerBase
     /// <response code="200">Sync completed successfully</response>
     /// <response code="404">If the project is not found or has no repositories</response>
     /// <response code="500">If an error occurred during sync</response>
-    [HttpPost("project/{projectId:guid}")]
+    [HttpPost("projects/{projectId:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
@@ -73,7 +75,7 @@ public class GithubSyncController : ControllerBase
     /// <response code="200">Sync completed successfully</response>
     /// <response code="404">If the repository is not found</response>
     /// <response code="500">If an error occurred during sync</response>
-    [HttpPost("repository/{repoId:guid}")]
+    [HttpPost("repositories/{repoId:guid}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
