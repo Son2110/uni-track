@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.JiraConfig;
 using PMSS.Application.Interfaces.Repositories;
@@ -12,6 +13,7 @@ namespace PMSS.API.Controllers;
 /// </summary>
 [ApiController]
 [Produces("application/json")]
+[Authorize]
 public class JiraController : ControllerBase
 {
     private readonly IJiraApiService _jiraApiService;

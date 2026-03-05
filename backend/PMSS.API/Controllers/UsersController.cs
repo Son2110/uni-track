@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.User;
 using PMSS.Application.Interfaces.Services;
@@ -10,6 +11,7 @@ namespace PMSS.API.Controllers;
 [ApiController]
 [Route("api/v1/users")]
 [Produces("application/json")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -27,6 +29,7 @@ public class UsersController : ControllerBase
     /// <response code="200">Returns the list of users</response>
     /// <response code="400">If the filter parameters are invalid</response>
     [HttpGet]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] UserFilterParams filterParams)
@@ -67,6 +70,7 @@ public class UsersController : ControllerBase
     /// <response code="201">Returns the newly created user</response>
     /// <response code="400">If the request data is invalid</response>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateUserDto dto)
@@ -92,6 +96,7 @@ public class UsersController : ControllerBase
     /// <response code="400">If the request data is invalid</response>
     /// <response code="404">If the user is not found</response>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -142,6 +147,7 @@ public class UsersController : ControllerBase
     /// <response code="204">User deleted successfully</response>
     /// <response code="404">If the user is not found</response>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
