@@ -1,6 +1,7 @@
 using PMSS.Infrastructure.DependencyInjection;
 using PMSS.Infrastructure.Middleware;
 using PMSS.API.GraphQL;
+using Microsoft.OpenApi;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,7 +19,26 @@ try
     builder.Services.AddControllers();
 
     builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
+    builder.Services.AddSwaggerGen(options =>
+    {
+        options.SwaggerDoc("v1", new OpenApiInfo { Title = "PMSS API", Version = "v1" });
+        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "Bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Enter your JWT token"
+        });
+        options.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecuritySchemeReference("Bearer", doc),
+                new List<string>()
+            }
+        });
+    });
 
     builder.Services.AddInfrastructure(builder.Configuration);
 
@@ -58,6 +78,7 @@ try
     // Map GraphQL endpoint (GET only for queries)
     app.MapGraphQL("/graphql");
 
+    app.UseAuthentication();
     app.UseAuthorization();
 
     app.MapControllers();

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.Course;
 using PMSS.Application.Interfaces.Services;
@@ -10,6 +11,7 @@ namespace PMSS.API.Controllers;
 [ApiController]
 [Route("api/v1/courses")]
 [Produces("application/json")]
+[Authorize]
 public class CoursesController : ControllerBase
 {
     private readonly ICourseService _courseService;
@@ -67,6 +69,7 @@ public class CoursesController : ControllerBase
     /// <response code="201">Returns the newly created course</response>
     /// <response code="400">If the request data is invalid</response>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateCourseDto dto)
@@ -92,6 +95,7 @@ public class CoursesController : ControllerBase
     /// <response code="400">If the request data is invalid</response>
     /// <response code="404">If the course is not found</response>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -116,6 +120,7 @@ public class CoursesController : ControllerBase
     /// <response code="204">Course deleted successfully</response>
     /// <response code="404">If the course is not found</response>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
