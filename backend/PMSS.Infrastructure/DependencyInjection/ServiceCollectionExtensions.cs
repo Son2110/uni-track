@@ -82,6 +82,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IGithubRepoService, GithubRepoService>();
         services.AddScoped<IGithubDataSyncService, GithubDataSyncService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IAccessRequestService, AccessRequestService>();
 
         // Register background service for automated GitHub data sync at midnight
         services.AddHostedService<GithubDataSyncBackgroundService>();

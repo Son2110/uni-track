@@ -15,7 +15,8 @@ public interface IUnitOfWork : IDisposable
     IUserWeeklyContributionRepository UserWeeklyContributions { get; }
     IJiraConfigRepository JiraConfigs { get; }
     IAccessRequestRepository AccessRequests { get; }
-    
+    INotificationRepository Notifications { get; }
+
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

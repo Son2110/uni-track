@@ -22,6 +22,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<UserWeeklyContribution> UserWeeklyContributions { get; set; }
     public DbSet<JiraConfig> JiraConfigs { get; set; }
     public DbSet<AccessRequest> AccessRequests { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
