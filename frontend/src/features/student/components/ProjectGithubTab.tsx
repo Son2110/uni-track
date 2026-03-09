@@ -28,9 +28,13 @@ import { ContributorCard } from "./ContributorCard";
 
 interface ProjectGithubTabProps {
   projectId: string;
+  readOnly?: boolean;
 }
 
-export function ProjectGithubTab({ projectId }: ProjectGithubTabProps) {
+export function ProjectGithubTab({
+  projectId,
+  readOnly = false,
+}: ProjectGithubTabProps) {
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingRepo, setEditingRepo] = useState<GithubRepoDto | null>(null);
@@ -73,9 +77,6 @@ export function ProjectGithubTab({ projectId }: ProjectGithubTabProps) {
       );
     }
   };
-
-  // Debug log to check contributions data
-  console.log("GitHub Contributions Data:", contributions);
 
   return (
     <div className="space-y-6">
@@ -154,10 +155,12 @@ export function ProjectGithubTab({ projectId }: ProjectGithubTabProps) {
                 Sync Data
               </Button>
             )}
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Repository
-            </Button>
+            {!readOnly && (
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Repository
+              </Button>
+            )}
           </div>
         </div>
 
@@ -174,10 +177,12 @@ export function ProjectGithubTab({ projectId }: ProjectGithubTabProps) {
             <p className="text-gray-500 mb-4">
               Connect a GitHub repository to track your project's development.
             </p>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Repository
-            </Button>
+            {!readOnly && (
+              <Button onClick={() => setShowCreateModal(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Repository
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">
@@ -187,6 +192,7 @@ export function ProjectGithubTab({ projectId }: ProjectGithubTabProps) {
                 repo={repo}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
+                readOnly={readOnly}
               />
             ))}
           </div>
@@ -235,9 +241,15 @@ interface GithubRepoCardProps {
   repo: GithubRepoDto;
   onEdit: (repo: GithubRepoDto) => void;
   onDelete: (repoId: string) => void;
+  readOnly?: boolean;
 }
 
-function GithubRepoCard({ repo, onEdit, onDelete }: GithubRepoCardProps) {
+function GithubRepoCard({
+  repo,
+  onEdit,
+  onDelete,
+  readOnly = false,
+}: GithubRepoCardProps) {
   return (
     <div className="flex items-center gap-4 p-4 border border-gray-200 bg-white rounded-lg hover:bg-gray-50">
       <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
@@ -267,22 +279,26 @@ function GithubRepoCard({ repo, onEdit, onDelete }: GithubRepoCardProps) {
         >
           <ExternalLink className="w-5 h-5" />
         </a>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onEdit(repo)}
-          className="hover:bg-blue-50"
-        >
-          <Pencil className="w-4 h-4 text-blue-500" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(repo.githubRepoId)}
-          className="hover:bg-red-50"
-        >
-          <Trash2 className="w-4 h-4 text-red-500" />
-        </Button>
+        {!readOnly && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(repo)}
+              className="hover:bg-blue-50"
+            >
+              <Pencil className="w-4 h-4 text-blue-500" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(repo.githubRepoId)}
+              className="hover:bg-red-50"
+            >
+              <Trash2 className="w-4 h-4 text-red-500" />
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -334,6 +350,29 @@ function CreateRepoModal({ isOpen, onClose, projectId }: CreateRepoModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Add GitHub Repository">
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+          <p className="font-medium text-blue-900 mb-1">
+            📌 GitHub Token Required
+          </p>
+          <p className="text-blue-800 mb-2">
+            Get your token at:{" "}
+            <a
+              href="https://github.com/settings/tokens/new?description=PMSS&scopes=repo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline font-medium hover:text-blue-900"
+            >
+              github.com/settings/tokens
+            </a>
+          </p>
+          <p className="text-xs text-blue-700">
+            Generate token → Select{" "}
+            <code className="px-1 bg-blue-100 rounded">repo</code> scope → Copy
+            token (starts with{" "}
+            <code className="px-1 bg-blue-100 rounded">ghp_</code>)
+          </p>
+        </div>
+
         <Input
           label="Repository Owner"
           required
@@ -370,14 +409,15 @@ function CreateRepoModal({ isOpen, onClose, projectId }: CreateRepoModalProps) {
         </div>
 
         <Input
-          label="GitHub API Token (Optional)"
+          label="GitHub API Token"
           type="password"
+          required
           value={formData.apiToken}
           onChange={(e) =>
             setFormData({ ...formData, apiToken: e.target.value })
           }
           placeholder="ghp_..."
-          helpText="Required for private repositories or higher rate limits"
+          helpText="Required for syncing data. Get your token at: github.com/settings/tokens"
         />
 
         <div className="flex justify-end gap-2 pt-4">
@@ -476,7 +516,7 @@ function EditRepoModal({ isOpen, onClose, repo }: EditRepoModalProps) {
             setFormData({ ...formData, apiToken: e.target.value })
           }
           placeholder="ghp_..."
-          helpText="Leave empty to keep existing token"
+          helpText="Leave empty to keep current token"
         />
 
         <div className="flex justify-end gap-2 pt-4">

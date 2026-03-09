@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, FolderKanban, ArrowRight, Users } from "lucide-react";
 import { useProjects } from "@/features/student/api/useProjects";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import type { ProjectDto } from "@/types";
@@ -9,9 +10,15 @@ import type { ProjectDto } from "@/types";
 export function TeacherProjectsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Get all projects - can be filtered by class if needed
-  const { data: projects = [], isLoading } = useProjects();
+  // Get all projects and filter by teacher client-side
+  const { data: allProjects = [], isLoading } = useProjects();
+
+  // Filter projects by teacher
+  const projects = allProjects.filter(
+    (project) => project.class?.teacher?.userId === user?.userId,
+  );
 
   const filteredProjects = projects.filter((project) =>
     [project.name, project.courseName, project.courseCode, project.className]

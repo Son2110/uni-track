@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -6,6 +7,7 @@ import {
   Edit,
   Trash2,
   GraduationCap,
+  ArrowRight,
 } from "lucide-react";
 import {
   useClasses,
@@ -15,7 +17,6 @@ import {
 } from "@/features/academic/api/useClasses";
 import { useSemesters } from "@/features/academic/api/useSemesters";
 import { useCourses } from "@/features/academic/api/useCourses";
-import { useUsers } from "@/features/users/api/useUsers";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -25,6 +26,7 @@ import type { ClassWithRelations } from "@/features/academic/api/useClasses";
 import { useAuth } from "@/features/auth/context/AuthContext";
 
 export function TeacherClassesPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSemester, setFilterSemester] = useState("");
@@ -146,6 +148,9 @@ export function TeacherClassesPage() {
               classItem={classItem}
               onEdit={() => setEditingClass(classItem)}
               onDelete={() => handleDelete(classItem.classId)}
+              onViewDetails={() =>
+                navigate(`/teacher/classes/${classItem.classId}`)
+              }
             />
           ))}
         </div>
@@ -185,9 +190,15 @@ interface ClassCardProps {
   classItem: ClassWithRelations;
   onEdit: () => void;
   onDelete: () => void;
+  onViewDetails: () => void;
 }
 
-function ClassCard({ classItem, onEdit, onDelete }: ClassCardProps) {
+function ClassCard({
+  classItem,
+  onEdit,
+  onDelete,
+  onViewDetails,
+}: ClassCardProps) {
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="space-y-3">
@@ -212,25 +223,36 @@ function ClassCard({ classItem, onEdit, onDelete }: ClassCardProps) {
           </div>
         </div>
 
-        <div className="pt-3 border-t flex gap-2">
+        <div className="pt-3 border-t space-y-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={onEdit}
-            className="flex-1"
+            onClick={onViewDetails}
+            className="w-full"
           >
-            <Edit className="w-4 h-4 mr-1" />
-            Edit
+            <ArrowRight className="w-4 h-4 mr-1" />
+            View Details
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDelete}
-            className="flex-1"
-          >
-            <Trash2 className="w-4 h-4 mr-1" />
-            Delete
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEdit}
+              className="flex-1"
+            >
+              <Edit className="w-4 h-4 mr-1" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDelete}
+              className="flex-1"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Delete
+            </Button>
+          </div>
         </div>
       </div>
     </Card>
@@ -250,10 +272,6 @@ interface ClassFormModalProps {
 function ClassFormModal({ classItem, onClose, onSubmit }: ClassFormModalProps) {
   const { data: semesters = [] } = useSemesters();
   const { data: courses = [] } = useCourses();
-  const { data: allUsers = [] } = useUsers();
-
-  // Filter only teachers (GraphQL returns role as "TEACHER" string)
-  const teachers = allUsers.filter((user) => user.role === "Teacher");
 
   const { user } = useAuth();
 
@@ -271,10 +289,10 @@ function ClassFormModal({ classItem, onClose, onSubmit }: ClassFormModalProps) {
 
     try {
       if (classItem) {
-        // Update only allows classCode and teacherId
+        // Update: teacher is locked in UI but backend requires it
         await onSubmit({
           classCode: formData.classCode,
-          teacherId: formData.teacherId,
+          teacherId: formData.teacherId, // Required by backend UpdateClassDto
         });
       } else {
         // Create requires all fields
@@ -360,21 +378,12 @@ function ClassFormModal({ classItem, onClose, onSubmit }: ClassFormModalProps) {
           <label className="block text-sm font-medium text-slate-700">
             Teacher
           </label>
-          <select
-            value={formData.teacherId}
-            onChange={(e) =>
-              setFormData({ ...formData, teacherId: e.target.value })
-            }
-            className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
-            required
-          >
-            <option value="">Select Teacher</option>
-            {teachers.map((teacher) => (
-              <option key={teacher.userId} value={teacher.userId}>
-                {teacher.name} ({teacher.email})
-              </option>
-            ))}
-          </select>
+          <div className="w-full px-4 py-2.5 bg-gray-50 border border-slate-300 rounded-lg text-sm text-gray-700">
+            {user?.name} ({user?.email})
+          </div>
+          <p className="text-xs text-gray-500">
+            You will be assigned as the teacher for this class
+          </p>
         </div>
 
         {classItem && (

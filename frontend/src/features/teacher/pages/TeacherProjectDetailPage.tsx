@@ -87,11 +87,11 @@ export function TeacherProjectDetailPage() {
         </TabsContent>
 
         <TabsContent value="jira">
-          <ProjectJiraTab projectId={project.projectId} />
+          <ProjectJiraTab projectId={project.projectId} readOnly={true} />
         </TabsContent>
 
         <TabsContent value="github">
-          <ProjectGithubTab projectId={project.projectId} />
+          <ProjectGithubTab projectId={project.projectId} readOnly={true} />
         </TabsContent>
       </Tabs>
     </div>

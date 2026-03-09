@@ -134,6 +134,12 @@ export interface ProjectDto {
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  class?: {
+    teacher?: {
+      userId: string;
+      name: string;
+    };
+  };
 }
 
 export interface GithubRepoDto {

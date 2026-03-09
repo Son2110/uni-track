@@ -13,13 +13,17 @@ import { CheckSquare, ExternalLink, Settings } from "lucide-react";
 
 interface ProjectJiraTabProps {
   projectId: string;
+  readOnly?: boolean;
 }
 
-export function ProjectJiraTab({ projectId }: ProjectJiraTabProps) {
+export function ProjectJiraTab({
+  projectId,
+  readOnly = false,
+}: ProjectJiraTabProps) {
   const [showConfigModal, setShowConfigModal] = useState(false);
-  const { data: config, isLoading, error } = useJiraConfig(projectId);
+  const { data: config, isLoading } = useJiraConfig(projectId);
 
-  const hasConfig = !!config && !error;
+  const hasConfig = !!config;
 
   return (
     <div className="space-y-6">
@@ -36,10 +40,12 @@ export function ProjectJiraTab({ projectId }: ProjectJiraTabProps) {
           <p className="text-gray-500 mb-4">
             This project hasn't been connected to Jira yet.
           </p>
-          <Button onClick={() => setShowConfigModal(true)}>
-            <Settings className="w-4 h-4 mr-2" />
-            Configure Jira
-          </Button>
+          {!readOnly && (
+            <Button onClick={() => setShowConfigModal(true)}>
+              <Settings className="w-4 h-4 mr-2" />
+              Configure Jira
+            </Button>
+          )}
         </Card>
       ) : (
         <>
@@ -51,14 +57,16 @@ export function ProjectJiraTab({ projectId }: ProjectJiraTabProps) {
                 <Badge variant={config.isActive ? "success" : "warning"}>
                   {config.isActive ? "Active" : "Inactive"}
                 </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowConfigModal(true)}
-                >
-                  <Settings className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
+                {!readOnly && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowConfigModal(true)}
+                  >
+                    <Settings className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
               </div>
             </div>
 

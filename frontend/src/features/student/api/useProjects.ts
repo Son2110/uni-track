@@ -11,6 +11,7 @@ import type {
 import {
   GET_USER_PROJECTS,
   GET_PROJECT_MEMBERS_LIST,
+  GET_PROJECT_MEMBERSHIP,
   GET_PROJECT,
   GET_GITHUB_REPO,
   transformToProjectMemberDto,
@@ -19,6 +20,7 @@ import {
   type GetProjectMembersResponse,
   type GetUserProjectsResponse,
   type GetProjectMembersListResponse,
+  type GetProjectMembershipResponse,
   type GetProjectsResponse,
   type GetProjectResponse,
   type GetGithubReposResponse,
@@ -122,15 +124,19 @@ export const useProjectMembersList = (projectId: string) => {
   });
 };
 
-// Get specific membership
+// Get specific membership - GraphQL
 export const useProjectMembership = (projectId: string, userId: string) => {
   return useQuery({
     queryKey: ["project-members", projectId, userId],
     queryFn: async () => {
-      const response = await apiClient.get<ProjectMemberDto>(
-        `/api/v1/projects/${projectId}/members/${userId}`,
+      const data = await graphqlClient.request<GetProjectMembershipResponse>(
+        GET_PROJECT_MEMBERSHIP,
+        { projectId, userId },
       );
-      return response.data;
+      // Return first node or null if no membership found
+      return data.projectMembers.nodes.length > 0
+        ? transformToProjectMemberDto(data.projectMembers.nodes[0])
+        : null;
     },
     enabled: !!projectId && !!userId,
   });
@@ -402,10 +408,18 @@ export const useJiraConfig = (projectId: string) => {
   return useQuery({
     queryKey: ["jira-config", projectId],
     queryFn: async () => {
-      const response = await apiClient.get<JiraConfigDto>(
-        `/api/v1/projects/${projectId}/jira-config`,
-      );
-      return response.data;
+      try {
+        const response = await apiClient.get<JiraConfigDto>(
+          `/api/v1/projects/${projectId}/jira-config`,
+        );
+        return response.data;
+      } catch (error: any) {
+        // 404 means no config exists - return null instead of throwing
+        if (error?.response?.status === 404) {
+          return null;
+        }
+        throw error;
+      }
     },
     enabled: !!projectId,
   });

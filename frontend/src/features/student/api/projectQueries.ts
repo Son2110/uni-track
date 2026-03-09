@@ -165,6 +165,70 @@ export interface GetProjectMembersListResponse {
   };
 }
 
+export const GET_PROJECT_MEMBERSHIP = gql`
+  query GetProjectMembership($projectId: UUID!, $userId: UUID!) {
+    projectMembers(
+      where: { projectId: { eq: $projectId }, userId: { eq: $userId } }
+    ) {
+      nodes {
+        projectId
+        userId
+        joinedAt
+        project {
+          projectId
+          name
+          description
+          classId
+          class {
+            classCode
+            courseId
+            course {
+              code
+              name
+            }
+          }
+        }
+        user {
+          userId
+          name
+          email
+          role
+        }
+      }
+    }
+  }
+`;
+
+export interface GetProjectMembershipResponse {
+  projectMembers: {
+    nodes: Array<{
+      projectId: string;
+      userId: string;
+      joinedAt: string;
+      project: {
+        projectId: string;
+        name: string;
+        description: string;
+        classId: string;
+        class: {
+          classCode: string;
+          courseId: string;
+          course: {
+            code: string;
+            name: string;
+          };
+        };
+      };
+      user: {
+        userId: string;
+        name: string;
+        email: string;
+        role: number;
+      };
+    }>;
+  };
+}
+
 // ============================================
 // PROJECTS
 // ============================================
@@ -384,6 +448,16 @@ export const transformToProjectDto = (
     description: node.description,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
+    class: node.class
+      ? {
+          teacher: node.class.teacher
+            ? {
+                userId: node.class.teacher.userId,
+                name: node.class.teacher.name,
+              }
+            : undefined,
+        }
+      : undefined,
   };
 };
 

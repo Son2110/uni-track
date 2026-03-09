@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { Plus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/Button";
@@ -12,7 +12,7 @@ import {
   ClassFormModal,
   DeleteClassDialog,
 } from "@/features/academic/components/ClassFormModal";
-import { useEnrollments } from "@/features/student/api/useEnrollments";
+import { useEnrollmentCounts } from "@/features/student/api/useEnrollments";
 
 export const ClassPage: React.FC = () => {
   const navigate = useNavigate();
@@ -24,20 +24,8 @@ export const ClassPage: React.FC = () => {
   const [formMode, setFormMode] = useState<"create" | "edit">("create");
 
   const { data: classes, isLoading, isError, error, refetch } = useClasses();
-  const { data: enrollments, isLoading: isEnrollmentsLoading } =
-    useEnrollments();
-
-  // Create a map of classId -> student count
-  const studentCountMap = useMemo(() => {
-    if (!enrollments) return new Map<string, number>();
-
-    const countMap = new Map<string, number>();
-    enrollments.forEach((enrollment) => {
-      const count = countMap.get(enrollment.classId) || 0;
-      countMap.set(enrollment.classId, count + 1);
-    });
-    return countMap;
-  }, [enrollments]);
+  const { data: studentCountMap, isLoading: isCountsLoading } =
+    useEnrollmentCounts();
 
   const handleCreate = () => {
     setSelectedClass(null);
@@ -70,7 +58,7 @@ export const ClassPage: React.FC = () => {
     setSelectedClass(null);
   };
 
-  if (isLoading || isEnrollmentsLoading) {
+  if (isLoading || isCountsLoading) {
     return <LoadingPage message="Loading classes..." />;
   }
 
@@ -114,7 +102,7 @@ export const ClassPage: React.FC = () => {
               classCode: classItem.classCode,
               courseName: classItem.course?.name || "Unknown Course",
               lecturer: classItem.teacher?.name || "TBA",
-              studentCount: studentCountMap.get(classItem.classId) || 0,
+              studentCount: studentCountMap?.get(classItem.classId) || 0,
               category: classItem.classCode.substring(0, 4),
             };
             return (

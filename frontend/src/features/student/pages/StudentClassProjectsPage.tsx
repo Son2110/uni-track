@@ -5,15 +5,14 @@ import {
   FolderKanban,
   Plus,
   Search,
-  Pencil,
-  Trash2,
+  ArrowRight,
+  UserPlus,
 } from "lucide-react";
 import {
   useProjects,
   useCreateProject,
   useAddProjectMember,
-  useUpdateProject,
-  useDeleteProject,
+  useUserProjects,
 } from "../api/useProjects";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { Button } from "@/components/ui/Button";
@@ -24,7 +23,6 @@ export function StudentClassProjectsPage() {
   const { user } = useAuth();
   const { classId } = useParams<{ classId: string }>();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -34,85 +32,65 @@ export function StudentClassProjectsPage() {
     classId,
   });
   const createProjectMutation = useCreateProject();
-  const updateProjectMutation = useUpdateProject();
-  const deleteProjectMutation = useDeleteProject();
   const addMemberMutation = useAddProjectMember();
+
+  // Get user's joined projects to check membership
+  const { data: userProjects = [] } = useUserProjects(user?.userId || "");
 
   const filteredProjects = allProjects.filter((project) =>
     project.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  // Check if current user is member of a project
+  const isUserMember = (projectId: string) => {
+    return userProjects.some((p) => p.projectId === projectId);
+  };
+
+  const handleJoinProject = async (projectId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+
+    try {
+      await addMemberMutation.mutateAsync({
+        projectId,
+        userId: user.userId,
+      });
+      // Navigate to workspace after joining
+      navigate(`/student/workspace/${projectId}`);
+    } catch (error) {
+      console.error("Failed to join project:", error);
+      alert("Failed to join project. Please try again.");
+    }
+  };
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!classId || !projectName.trim() || !user) return;
 
     try {
-      if (editingProjectId) {
-        // Update existing project
-        await updateProjectMutation.mutateAsync({
-          projectId: editingProjectId,
-          name: projectName.trim(),
-          description: projectDescription.trim() || undefined,
-        });
-        setEditingProjectId(null);
-        setShowCreateForm(false);
-      } else {
-        // Step 1: Create project
-        const result = await createProjectMutation.mutateAsync({
-          classId,
-          name: projectName.trim(),
-          description: projectDescription.trim() || undefined,
-        });
+      // Step 1: Create project
+      const result = await createProjectMutation.mutateAsync({
+        classId,
+        name: projectName.trim(),
+        description: projectDescription.trim() || undefined,
+      });
 
-        // Step 2: Add current user as member
-        await addMemberMutation.mutateAsync({
-          projectId: result.projectId,
-          userId: user.userId,
-        });
+      // Step 2: Add current user as member
+      await addMemberMutation.mutateAsync({
+        projectId: result.projectId,
+        userId: user.userId,
+      });
 
-        // Navigate to the new project workspace
-        navigate(`/student/workspace/${result.projectId}`);
-      }
+      // Navigate to the new project workspace
+      navigate(`/student/workspace/${result.projectId}`);
+
       setProjectName("");
       setProjectDescription("");
+      setShowCreateForm(false);
     } catch (error) {
       console.error("Failed to save project:", error);
       alert("Failed to save project. Please try again.");
     }
-  };
-
-  const handleEditProject = (project: any) => {
-    setEditingProjectId(project.projectId);
-    setProjectName(project.name);
-    setProjectDescription(project.description || "");
-    setShowCreateForm(true);
-  };
-
-  const handleDeleteProject = async (
-    projectId: string,
-    projectName: string,
-  ) => {
-    if (
-      !confirm(
-        `Are you sure you want to delete "${projectName}"? This action cannot be undone.`,
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await deleteProjectMutation.mutateAsync(projectId);
-    } catch (error) {
-      console.error("Failed to delete project:", error);
-      alert("Failed to delete project. Please try again.");
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setShowCreateForm(false);
-    setEditingProjectId(null);
-    setProjectName("");
-    setProjectDescription("");
   };
 
   if (!classId) {
@@ -246,12 +224,10 @@ export function StudentClassProjectsPage() {
             </Button>
           </div>
 
-          {/* Create/Edit Form Modal */}
+          {/* Create Form Modal */}
           {showCreateForm && (
             <Card className="p-6 border-2 border-blue-500">
-              <h3 className="text-lg font-semibold mb-4">
-                {editingProjectId ? "Edit Project" : "Create New Project"}
-              </h3>
+              <h3 className="text-lg font-semibold mb-4">Create New Project</h3>
               <form onSubmit={handleCreateProject} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -284,18 +260,19 @@ export function StudentClassProjectsPage() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleCancelEdit}
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      setProjectName("");
+                      setProjectDescription("");
+                    }}
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    isLoading={
-                      createProjectMutation.isPending ||
-                      updateProjectMutation.isPending
-                    }
+                    isLoading={createProjectMutation.isPending}
                   >
-                    {editingProjectId ? "Save Changes" : "Create Project"}
+                    Create Project
                   </Button>
                 </div>
               </form>
@@ -313,61 +290,32 @@ export function StudentClassProjectsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredProjects.map((project) => (
-                <Card
-                  key={project.projectId}
-                  className="p-4 hover:shadow-lg transition-shadow group"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between">
-                      <div
-                        className="flex-1 cursor-pointer"
-                        onClick={() =>
-                          navigate(`/student/workspace/${project.projectId}`)
-                        }
-                      >
-                        <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
-                          {project.name}
-                        </h3>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Created{" "}
-                          {new Date(project.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditProject(project);
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                          title="Edit project"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteProject(
-                              project.projectId,
-                              project.name,
-                            );
-                          }}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-                          title="Delete project"
-                          disabled={deleteProjectMutation.isPending}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
+              {filteredProjects.map((project) => {
+                const isMember = isUserMember(project.projectId);
 
-                    <div
-                      className="cursor-pointer"
-                      onClick={() =>
-                        navigate(`/student/workspace/${project.projectId}`)
-                      }
-                    >
+                return (
+                  <Card
+                    key={project.projectId}
+                    className="p-4 hover:shadow-lg transition-shadow group"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
+                            {project.name}
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Created{" "}
+                            {new Date(project.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        {isMember && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                            Joined
+                          </span>
+                        )}
+                      </div>
+
                       <div className="flex items-center gap-2">
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
                           <span className="text-blue-600 font-medium text-sm">
@@ -382,14 +330,43 @@ export function StudentClassProjectsPage() {
                       </div>
 
                       {project.description && (
-                        <p className="text-sm text-gray-500 line-clamp-2 mt-2">
+                        <p className="text-sm text-gray-500 line-clamp-2">
                           {project.description}
                         </p>
                       )}
+
+                      {/* Action Button */}
+                      <div className="pt-2">
+                        {isMember ? (
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() =>
+                              navigate(
+                                `/student/workspace/${project.projectId}`,
+                              )
+                            }
+                          >
+                            <ArrowRight className="w-4 h-4 mr-2" />
+                            Open Workspace
+                          </Button>
+                        ) : (
+                          <Button
+                            className="w-full"
+                            onClick={(e) =>
+                              handleJoinProject(project.projectId, e)
+                            }
+                            isLoading={addMemberMutation.isPending}
+                          >
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Join Project
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>

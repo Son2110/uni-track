@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, BookOpen, Calendar, User } from "lucide-react";
-import { useAvailableClasses } from "../api/useAvailableClasses";
+import { useAvailableClasses } from "../api/useClasses";
 import { useUserEnrollments, useCreateEnrollment } from "../api/useEnrollments";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { Button } from "@/components/ui/Button";

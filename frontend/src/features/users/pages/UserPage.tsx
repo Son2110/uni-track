@@ -4,7 +4,10 @@ import { Button } from "@/components/ui/Button";
 import { UserFilters } from "@/features/users/components/UserFilters";
 import { UserTable } from "@/features/users/components/UserTable";
 import { LoadingPage, ErrorPage } from "@/components/ui/Loading";
-import { useUsers } from "@/features/users/api/useUsers";
+import {
+  useUsersWithFilters,
+  type UserFilterParams,
+} from "@/features/users/api/useUsers";
 import {
   UserFormModal,
   DeleteUserDialog,
@@ -12,7 +15,16 @@ import {
 import type { User } from "@/types";
 
 export const UserPage: React.FC = () => {
-  const { data: users, isLoading, isError, error, refetch } = useUsers();
+  // Filter state
+  const [filters, setFilters] = useState<UserFilterParams>({});
+
+  const {
+    data: users,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useUsersWithFilters(filters);
 
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -75,7 +87,7 @@ export const UserPage: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <UserFilters />
+      <UserFilters filters={filters} onFiltersChange={setFilters} />
 
       {/* User Table */}
       <UserTable

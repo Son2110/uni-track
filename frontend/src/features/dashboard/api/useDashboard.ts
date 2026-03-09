@@ -1,29 +1,54 @@
 import { useQuery } from "@tanstack/react-query";
 import { gql } from "graphql-request";
+import { graphqlClient } from "@/lib/graphql";
 
 // GraphQL queries for dashboard statistics
 export const GET_DASHBOARD_STATS = gql`
   query GetDashboardStats {
     users {
-      totalCount
+      nodes {
+        userId
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+      }
     }
     courses {
-      totalCount
+      nodes {
+        courseId
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+      }
     }
     projects {
-      totalCount
+      nodes {
+        projectId
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+      }
     }
     classes {
-      totalCount
+      nodes {
+        classId
+      }
+      pageInfo {
+        hasNextPage
+        hasPreviousPage
+      }
     }
   }
 `;
 
 export interface DashboardStatsResponse {
-  users: { totalCount: number };
-  courses: { totalCount: number };
-  projects: { totalCount: number };
-  classes: { totalCount: number };
+  users: { nodes: Array<{ userId: string }> };
+  courses: { nodes: Array<{ courseId: string }> };
+  projects: { nodes: Array<{ projectId: string }> };
+  classes: { nodes: Array<{ classId: string }> };
 }
 
 export interface DashboardStats {
@@ -39,14 +64,22 @@ export const dashboardKeys = {
   stats: () => [...dashboardKeys.all, "stats"] as const,
 };
 
-// Fetch dashboard statistics
-// Backend chưa có endpoint - feature disabled
+// Fetch dashboard statistics using GraphQL
 export const useDashboardStats = () => {
   return useQuery({
     queryKey: dashboardKeys.stats(),
     queryFn: async (): Promise<DashboardStats> => {
-      throw new Error("Dashboard stats endpoint not implemented");
+      const data =
+        await graphqlClient.request<DashboardStatsResponse>(
+          GET_DASHBOARD_STATS,
+        );
+
+      return {
+        totalUsers: data.users.nodes.length,
+        totalCourses: data.courses.nodes.length,
+        totalProjects: data.projects.nodes.length,
+        totalClasses: data.classes.nodes.length,
+      };
     },
-    enabled: false,
   });
 };

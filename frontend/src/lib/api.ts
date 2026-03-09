@@ -1,6 +1,5 @@
 // REST API client for backend
-const API_BASE_URL =
-  import.meta.env.VITE_REST_API_URL || "https://localhost:7136";
+const API_BASE_URL = import.meta.env.VITE_REST_API_URL;
 
 // Import auth token getter
 import { getAuthToken } from "@/features/auth/api/authApi";

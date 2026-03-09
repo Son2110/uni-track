@@ -26,6 +26,28 @@ export interface GetCoursesResponse {
   };
 }
 
+// GraphQL Query for single course by ID
+export const GET_COURSE_BY_ID = gql`
+  query GetCourseById($courseId: UUID!) {
+    courses(where: { courseId: { eq: $courseId } }) {
+      nodes {
+        courseId
+        code
+        name
+        description
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+export interface GetCourseByIdResponse {
+  courses: {
+    nodes: Course[];
+  };
+}
+
 // Query keys
 export const courseKeys = {
   all: ["courses"] as const,
@@ -45,15 +67,16 @@ export const useCourses = () => {
   });
 };
 
-// Fetch single course
+// Fetch single course via GraphQL
 export const useCourse = (courseId: string) => {
   return useQuery({
     queryKey: courseKeys.detail(courseId),
     queryFn: async () => {
-      const response = await apiClient.get<Course>(
-        `/api/v1/courses/${courseId}`,
+      const data = await graphqlClient.request<GetCourseByIdResponse>(
+        GET_COURSE_BY_ID,
+        { courseId },
       );
-      return response.data;
+      return data.courses.nodes[0] || null;
     },
     enabled: !!courseId,
   });
