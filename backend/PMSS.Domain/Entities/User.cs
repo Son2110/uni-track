@@ -19,4 +19,9 @@ public class User
     public virtual ICollection<ProjectMember> ProjectMembers { get; set; } = new List<ProjectMember>();
     public virtual ICollection<RepoContributor> RepoContributors { get; set; } = new List<RepoContributor>();
     public virtual ICollection<AccessRequest> AccessRequests { get; set; } = new List<AccessRequest>();
+    
+    /// <summary>
+    /// User's weekly contributions across all repositories
+    /// </summary>
+    public virtual ICollection<UserWeeklyContribution> WeeklyContributions { get; set; } = new List<UserWeeklyContribution>();
 }

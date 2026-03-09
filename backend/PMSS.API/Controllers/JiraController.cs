@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.JiraConfig;
+using PMSS.Application.DTOs.Srs;
 using PMSS.Application.Interfaces.Repositories;
 using PMSS.Application.Interfaces.Services;
 using PMSS.Domain.Entities;
@@ -18,11 +19,13 @@ public class JiraController : ControllerBase
 {
     private readonly IJiraApiService _jiraApiService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ISrsGeneratorService _srsGeneratorService;
 
-    public JiraController(IJiraApiService jiraApiService, IUnitOfWork unitOfWork)
+    public JiraController(IJiraApiService jiraApiService, IUnitOfWork unitOfWork, ISrsGeneratorService srsGeneratorService)
     {
         _jiraApiService = jiraApiService;
         _unitOfWork = unitOfWork;
+        _srsGeneratorService = srsGeneratorService;
     }
 
     /// <summary>
@@ -265,6 +268,70 @@ public class JiraController : ControllerBase
             return "********";
 
         return token[..4] + "****" + token[^4..];
+    }
+
+    /// <summary>
+    /// Generate SRS document from Jira issues using Google Gemini AI
+    /// Fetches Jira issues for the project and transforms them into an SRS
+    /// </summary>
+    /// <param name="projectId">The PMSS project ID linked to a Jira configuration</param>
+    /// <param name="dto">Optional request parameters</param>
+    /// <returns>Generated SRS document in Markdown format</returns>
+    /// <response code="200">Returns the generated SRS document</response>
+    /// <response code="404">If no Jira configuration found for the project</response>
+    /// <response code="502">If Jira API or AI generation fails</response>
+    [HttpPost("generate-srs/{projectId:guid}")]
+    [ProducesResponseType(typeof(SrsResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    public async Task<IActionResult> GenerateSrs(Guid projectId, [FromBody] GenerateSrsRequestDto? dto = null)
+    {
+        try
+        {
+            // 1. Fetch raw Jira issues
+            var rawJson = await _jiraApiService.FetchRawJiraIssuesAsync(projectId);
+
+            // 2. Get project name
+            var project = await _unitOfWork.Projects.GetByIdAsync(projectId);
+            var projectName = dto?.ProjectName ?? project?.Name ?? "Unknown Project";
+
+            // 3. If there's additional context, append it to the JSON
+            var inputJson = rawJson;
+            if (!string.IsNullOrWhiteSpace(dto?.AdditionalContext))
+            {
+                inputJson = $"{{\"issues_data\": {rawJson}, \"additional_context\": \"{dto.AdditionalContext}\"}}";
+            }
+
+            // 4. Generate SRS using Gemini AI
+            var srsContent = await _srsGeneratorService.GenerateSrsFromJiraAsync(inputJson, projectName);
+
+            var result = new SrsResultDto
+            {
+                ProjectId = projectId,
+                ProjectName = projectName,
+                SrsContent = srsContent,
+                ModelUsed = "gemini-2.0-flash",
+                GeneratedAt = DateTime.UtcNow
+            };
+
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("No active Jira configuration found"))
+        {
+            return NotFound(new { error = ex.Message });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (HttpRequestException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { error = "Failed to communicate with Jira API", details = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { error = "AI generation failed", details = ex.Message });
+        }
     }
 
     /// <summary>

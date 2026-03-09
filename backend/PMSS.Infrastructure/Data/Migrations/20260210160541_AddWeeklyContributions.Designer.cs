@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMSS.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using PMSS.Infrastructure.Data;
 namespace PMSS.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260210160541_AddWeeklyContributions")]
+    partial class AddWeeklyContributions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -223,8 +226,9 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("CreatedByUserId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
@@ -245,8 +249,6 @@ namespace PMSS.Infrastructure.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("JiraConfigId");
-
-                    b.HasIndex("CreatedByUserId");
 
                     b.HasIndex("ProjectId")
                         .IsUnique();
@@ -602,17 +604,11 @@ namespace PMSS.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("PMSS.Domain.Entities.JiraConfig", b =>
                 {
-                    b.HasOne("PMSS.Domain.Entities.User", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId");
-
                     b.HasOne("PMSS.Domain.Entities.Project", "Project")
                         .WithOne("JiraConfig")
                         .HasForeignKey("PMSS.Domain.Entities.JiraConfig", "ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("CreatedByUser");
 
                     b.Navigation("Project");
                 });
