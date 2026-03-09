@@ -1,8 +1,49 @@
 import { graphqlClient } from "@/lib/graphql";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
-import { GET_SEMESTERS, type GetSemestersResponse } from "./queries";
+import { gql } from "graphql-request";
 import type { Semester } from "@/types";
+
+// GraphQL Queries
+export const GET_SEMESTERS = gql`
+  query GetSemesters {
+    semesters {
+      nodes {
+        semesterId
+        name
+        startDate
+        endDate
+      }
+    }
+  }
+`;
+
+// GraphQL Response Types
+export interface GetSemestersResponse {
+  semesters: {
+    nodes: Semester[];
+  };
+}
+
+// GraphQL Query for single semester by ID
+export const GET_SEMESTER_BY_ID = gql`
+  query GetSemesterById($semesterId: UUID!) {
+    semesters(where: { semesterId: { eq: $semesterId } }) {
+      nodes {
+        semesterId
+        name
+        startDate
+        endDate
+      }
+    }
+  }
+`;
+
+export interface GetSemesterByIdResponse {
+  semesters: {
+    nodes: Semester[];
+  };
+}
 
 // Types for mutations
 export interface CreateSemesterInput {
@@ -37,15 +78,16 @@ export const useSemesters = () => {
   });
 };
 
-// Fetch single semester
+// Fetch single semester via GraphQL
 export const useSemester = (semesterId: string) => {
   return useQuery({
     queryKey: semesterKeys.detail(semesterId),
     queryFn: async () => {
-      const response = await apiClient.get<Semester>(
-        `/api/v1/semesters/${semesterId}`,
+      const data = await graphqlClient.request<GetSemesterByIdResponse>(
+        GET_SEMESTER_BY_ID,
+        { semesterId },
       );
-      return response.data;
+      return data.semesters.nodes[0] || null;
     },
     enabled: !!semesterId,
   });

@@ -17,7 +17,9 @@ import { UserPage } from "@/features/users/pages/UserPage";
 // Teacher Pages
 import { TeacherSemestersPage } from "@/features/teacher/pages/TeacherSemestersPage";
 import { TeacherCoursesPage } from "@/features/teacher/pages/TeacherCoursesPage";
+import { TeacherCourseDetailPage } from "@/features/teacher/pages/TeacherCourseDetailPage";
 import { TeacherClassesPage } from "@/features/teacher/pages/TeacherClassesPage";
+import { TeacherClassDetailPage } from "@/features/teacher/pages/TeacherClassDetailPage";
 import { TeacherProjectsPage } from "@/features/teacher/pages/TeacherProjectsPage";
 import { TeacherProjectDetailPage } from "@/features/teacher/pages/TeacherProjectDetailPage";
 import { TeacherSettingsPage } from "@/features/teacher/pages/TeacherSettingsPage";
@@ -111,8 +113,16 @@ export const router = createBrowserRouter([
         element: <TeacherCoursesPage />,
       },
       {
+        path: "courses/:courseId",
+        element: <TeacherCourseDetailPage />,
+      },
+      {
         path: "classes",
         element: <TeacherClassesPage />,
+      },
+      {
+        path: "classes/:classId",
+        element: <TeacherClassDetailPage />,
       },
       {
         path: "projects",

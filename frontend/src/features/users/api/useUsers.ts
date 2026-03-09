@@ -3,7 +3,13 @@ import { graphqlClient } from "@/lib/graphql";
 import { apiClient } from "@/lib/api";
 import {
   GET_USERS,
+  GET_USERS_WITH_SEARCH,
+  GET_USERS_WITH_ROLE,
+  GET_USERS_WITH_BOTH,
+  GET_USER_BY_ID,
   type GetUsersResponse,
+  type GetUsersWithFiltersResponse,
+  type GetUserByIdResponse,
   type UserFilterParams,
   type CreateUserInput,
   type UpdateUserInput,
@@ -59,37 +65,62 @@ export const useUsers = () => {
   });
 };
 
-// Fetch users with filters via REST API
+// Fetch users with filters via GraphQL
 export const useUsersWithFilters = (filters: UserFilterParams = {}) => {
   return useQuery({
     queryKey: userKeys.list(filters),
     queryFn: async () => {
-      const response = await apiClient.get<any[]>("/api/v1/users", {
-        pageNumber: filters.pageNumber,
-        pageSize: filters.pageSize,
-        search: filters.search,
-        role: filters.role,
-        sortBy: filters.sortBy,
-        sortOrder: filters.sortOrder,
-      });
-      return (response.data || []).map((user: any) => ({
-        ...user,
-        role: numberToRole(user.role), // Convert number to uppercase string
-      }));
+      const hasSearch = !!filters.search;
+      const hasRole = !!filters.role;
+
+      // No filters - use simple query
+      if (!hasSearch && !hasRole) {
+        const data = await graphqlClient.request<GetUsersResponse>(GET_USERS);
+        return data.users?.nodes || [];
+      }
+
+      // Only search filter
+      if (hasSearch && !hasRole) {
+        const data = await graphqlClient.request<GetUsersWithFiltersResponse>(
+          GET_USERS_WITH_SEARCH,
+          { search: filters.search },
+        );
+        return data.users.nodes;
+      }
+
+      // Only role filter
+      if (!hasSearch && hasRole) {
+        const data = await graphqlClient.request<GetUsersWithFiltersResponse>(
+          GET_USERS_WITH_ROLE,
+          { role: filters.role!.toUpperCase() },
+        );
+        return data.users.nodes;
+      }
+
+      // Both search and role filters
+      const data = await graphqlClient.request<GetUsersWithFiltersResponse>(
+        GET_USERS_WITH_BOTH,
+        {
+          search: filters.search!,
+          role: filters.role!.toUpperCase(),
+        },
+      );
+      return data.users.nodes;
     },
   });
 };
 
-// Fetch single user
+// Fetch single user via GraphQL
 export const useUser = (userId: string) => {
   return useQuery({
     queryKey: userKeys.detail(userId),
     queryFn: async () => {
-      const response = await apiClient.get<any>(`/api/v1/users/${userId}`);
-      return {
-        ...response.data,
-        role: numberToRole(response.data.role),
-      };
+      const data = await graphqlClient.request<GetUserByIdResponse>(
+        GET_USER_BY_ID,
+        { userId },
+      );
+      // Return the first node from the filtered result
+      return data.users.nodes[0] || null;
     },
     enabled: !!userId,
   });
@@ -152,3 +183,10 @@ export const useDeleteUser = () => {
     },
   });
 };
+
+// Re-export types for convenience
+export type {
+  UserFilterParams,
+  CreateUserInput,
+  UpdateUserInput,
+} from "./queries";

@@ -1,4 +1,11 @@
-export { useSemesters } from "./useSemesters";
+export {
+  useSemesters,
+  useSemester,
+  useCreateSemester,
+  useUpdateSemester,
+  useDeleteSemester,
+  semesterKeys,
+} from "./useSemesters";
 export {
   useCourses,
   useCourse,
@@ -15,4 +22,3 @@ export {
   useDeleteClass,
   classKeys,
 } from "./useClasses";
-export * from "./queries";

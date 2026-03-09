@@ -42,8 +42,8 @@ export function StudentSettingsPage() {
         data: {
           name: formData.name,
           email: formData.email,
-          githubUsername: formData.githubUsername || null,
-          githubEmail: formData.githubEmail || null,
+          githubUsername: formData.githubUsername || undefined,
+          githubEmail: formData.githubEmail || undefined,
           role: user!.role,
         },
       });

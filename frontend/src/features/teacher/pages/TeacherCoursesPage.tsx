@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Plus, Search, BookOpen, Edit, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Plus, Search, BookOpen, Edit, Trash2, ArrowRight } from "lucide-react";
 import {
   useCourses,
   useCreateCourse,
@@ -13,6 +14,7 @@ import { Input } from "@/components/ui/Input";
 import type { Course } from "@/types";
 
 export function TeacherCoursesPage() {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
@@ -100,6 +102,9 @@ export function TeacherCoursesPage() {
               course={course}
               onEdit={() => setEditingCourse(course)}
               onDelete={() => handleDelete(course.courseId)}
+              onViewDetails={() =>
+                navigate(`/teacher/courses/${course.courseId}`)
+              }
             />
           ))}
         </div>
@@ -139,9 +144,15 @@ interface CourseCardProps {
   course: Course;
   onEdit: () => void;
   onDelete: () => void;
+  onViewDetails: () => void;
 }
 
-function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
+function CourseCard({
+  course,
+  onEdit,
+  onDelete,
+  onViewDetails,
+}: CourseCardProps) {
   return (
     <Card className="p-4 hover:shadow-lg transition-shadow">
       <div className="space-y-3">
@@ -159,25 +170,36 @@ function CourseCard({ course, onEdit, onDelete }: CourseCardProps) {
           </p>
         )}
 
-        <div className="pt-3 border-t flex gap-2">
+        <div className="pt-3 border-t space-y-2">
           <Button
             variant="outline"
             size="sm"
-            onClick={onEdit}
-            className="flex-1"
+            onClick={onViewDetails}
+            className="w-full"
           >
-            <Edit className="w-4 h-4 mr-1" />
-            Edit
+            <ArrowRight className="w-4 h-4 mr-1" />
+            View Details
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onDelete}
-            className="flex-1"
-          >
-            <Trash2 className="w-4 h-4 mr-1" />
-            Delete
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onEdit}
+              className="flex-1"
+            >
+              <Edit className="w-4 h-4 mr-1" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onDelete}
+              className="flex-1"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Delete
+            </Button>
+          </div>
         </div>
       </div>
     </Card>

@@ -58,6 +58,43 @@ export interface GetClassesResponse {
   };
 }
 
+// GraphQL Query for single class by ID
+export const GET_CLASS_BY_ID = gql`
+  query GetClassById($classId: UUID!) {
+    classes(where: { classId: { eq: $classId } }) {
+      nodes {
+        classId
+        semesterId
+        courseId
+        classCode
+        teacherId
+        createdAt
+        updatedAt
+        course {
+          courseId
+          code
+          name
+        }
+        teacher {
+          userId
+          name
+          email
+        }
+        semester {
+          semesterId
+          name
+        }
+      }
+    }
+  }
+`;
+
+export interface GetClassByIdResponse {
+  classes: {
+    nodes: ClassWithRelations[];
+  };
+}
+
 // Query keys
 export const classKeys = {
   all: ["classes"] as const,
@@ -77,15 +114,17 @@ export const useClasses = () => {
   });
 };
 
-// Fetch single class
+// Fetch single class via GraphQL
 export const useClass = (classId: string) => {
   return useQuery({
     queryKey: classKeys.detail(classId),
     queryFn: async () => {
-      const response = await apiClient.get<ClassWithRelations>(
-        `/api/v1/classes/${classId}`,
+      const data = await graphqlClient.request<GetClassByIdResponse>(
+        GET_CLASS_BY_ID,
+        { classId },
       );
-      return response.data;
+      // Return the first node from the filtered result
+      return data.classes.nodes[0] || null;
     },
     enabled: !!classId,
   });
