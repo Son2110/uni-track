@@ -35,6 +35,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRepoContributorRepository, RepoContributorRepository>();
         services.AddScoped<IJiraConfigRepository, JiraConfigRepository>();
         services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
+        services.AddScoped<IWeeklyContributionRepository, WeeklyContributionRepository>();
+        services.AddScoped<IUserWeeklyContributionRepository, UserWeeklyContributionRepository>();
         
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
