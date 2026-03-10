@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # Ignore PMSS.Infrastructure Data Datasets folder
 /backend/PMSS.Infrastructure/Data/Datasets/
+
+# Generated SRS files
+/backend/PMSS.API/generated-srs/

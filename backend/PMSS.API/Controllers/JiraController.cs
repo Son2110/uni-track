@@ -271,15 +271,8 @@ public class JiraController : ControllerBase
     }
 
     /// <summary>
-    /// Generate SRS document from Jira issues using Google Gemini AI
-    /// Fetches Jira issues for the project and transforms them into an SRS
+    /// Generate SRS document from Jira issues using AI, saves to local file
     /// </summary>
-    /// <param name="projectId">The PMSS project ID linked to a Jira configuration</param>
-    /// <param name="dto">Optional request parameters</param>
-    /// <returns>Generated SRS document in Markdown format</returns>
-    /// <response code="200">Returns the generated SRS document</response>
-    /// <response code="404">If no Jira configuration found for the project</response>
-    /// <response code="502">If Jira API or AI generation fails</response>
     [HttpPost("generate-srs/{projectId:guid}")]
     [ProducesResponseType(typeof(SrsResultDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -288,22 +281,21 @@ public class JiraController : ControllerBase
     {
         try
         {
-            // 1. Fetch raw Jira issues
             var rawJson = await _jiraApiService.FetchRawJiraIssuesAsync(projectId);
 
-            // 2. Get project name
             var project = await _unitOfWork.Projects.GetByIdAsync(projectId);
             var projectName = dto?.ProjectName ?? project?.Name ?? "Unknown Project";
 
-            // 3. If there's additional context, append it to the JSON
             var inputJson = rawJson;
             if (!string.IsNullOrWhiteSpace(dto?.AdditionalContext))
             {
                 inputJson = $"{{\"issues_data\": {rawJson}, \"additional_context\": \"{dto.AdditionalContext}\"}}";
             }
 
-            // 4. Generate SRS using Gemini AI
             var srsContent = await _srsGeneratorService.GenerateSrsFromJiraAsync(inputJson, projectName);
+
+            // Save to local file
+            var fileName = await _srsGeneratorService.SaveSrsToFileAsync(srsContent, projectId, projectName);
 
             var result = new SrsResultDto
             {
@@ -311,7 +303,9 @@ public class JiraController : ControllerBase
                 ProjectName = projectName,
                 SrsContent = srsContent,
                 ModelUsed = "gpt-4o-mini",
-                GeneratedAt = DateTime.UtcNow
+                GeneratedAt = DateTime.UtcNow,
+                FileName = fileName,
+                DownloadUrl = Url.Action(nameof(DownloadSrs), new { fileName })
             };
 
             return Ok(result);
@@ -332,6 +326,33 @@ public class JiraController : ControllerBase
         {
             return StatusCode(StatusCodes.Status502BadGateway, new { error = "AI generation failed", details = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Download a previously generated SRS file
+    /// </summary>
+    [HttpGet("srs/download/{fileName}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public IActionResult DownloadSrs(string fileName)
+    {
+        var filePath = _srsGeneratorService.GetSrsFilePath(fileName);
+        if (filePath == null)
+            return NotFound(new { error = "SRS file not found" });
+
+        var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+        return File(stream, "text/markdown", fileName);
+    }
+
+    /// <summary>
+    /// List all generated SRS files for a project
+    /// </summary>
+    [HttpGet("srs/files/{projectId:guid}")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public IActionResult ListSrsFiles(Guid projectId)
+    {
+        var files = _srsGeneratorService.GetSrsFilesByProject(projectId);
+        return Ok(new { projectId, files, count = files.Length });
     }
 
     /// <summary>
