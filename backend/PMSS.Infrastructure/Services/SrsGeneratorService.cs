@@ -1,16 +1,17 @@
-using GenerativeAI;
+using System.ClientModel;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using OpenAI.Chat;
 using PMSS.Application.Interfaces.Services;
 
 namespace PMSS.Infrastructure.Services;
 
 /// <summary>
-/// Service that uses Google Gemini AI to generate SRS documents from Jira issues
+/// Service that uses OpenAI to generate SRS documents from Jira issues
 /// </summary>
 public class SrsGeneratorService : ISrsGeneratorService
 {
-    private readonly GenerativeModel _model;
+    private readonly ChatClient _chatClient;
     private readonly ILogger<SrsGeneratorService> _logger;
     private readonly string _modelId;
 
@@ -18,13 +19,24 @@ public class SrsGeneratorService : ISrsGeneratorService
     {
         _logger = logger;
 
-        var apiKey = configuration["Gemini:ApiKey"]
-            ?? throw new InvalidOperationException("Gemini:ApiKey is not configured in appsettings.json");
+        var apiKey = configuration["OpenAI:ApiKey"]
+            ?? throw new InvalidOperationException("OpenAI:ApiKey is not configured in appsettings.json");
 
-        _modelId = configuration["Gemini:ModelId"] ?? "gemini-2.0-flash";
+        _modelId = configuration["OpenAI:ModelId"] ?? "gpt-4o-mini";
 
-        var googleAi = new GoogleAi(apiKey);
-        _model = googleAi.CreateGenerativeModel($"models/{_modelId}");
+        var endpoint = configuration["OpenAI:Endpoint"];
+
+        if (!string.IsNullOrEmpty(endpoint))
+        {
+            // GitHub Models or Azure OpenAI compatible endpoint
+            var options = new OpenAI.OpenAIClientOptions { Endpoint = new Uri(endpoint) };
+            var client = new OpenAI.OpenAIClient(new ApiKeyCredential(apiKey), options);
+            _chatClient = client.GetChatClient(_modelId);
+        }
+        else
+        {
+            _chatClient = new ChatClient(_modelId, new ApiKeyCredential(apiKey));
+        }
     }
 
     /// <inheritdoc />
@@ -36,10 +48,16 @@ public class SrsGeneratorService : ISrsGeneratorService
 
         try
         {
-            var response = await _model.GenerateContentAsync(prompt);
-            var srsContent = response.Text() ?? string.Empty;
+            var messages = new List<ChatMessage>
+            {
+                new SystemChatMessage("You are an expert Software Requirements Analyst. Generate complete SRS documents in Markdown format following IEEE 830 standard."),
+                new UserChatMessage(prompt)
+            };
 
-            // Clean up markdown code fences if Gemini wraps the output
+            ChatCompletion completion = await _chatClient.CompleteChatAsync(messages);
+            var srsContent = completion.Content[0].Text ?? string.Empty;
+
+            // Clean up markdown code fences if AI wraps the output
             srsContent = CleanMarkdownOutput(srsContent);
 
             _logger.LogInformation("SRS generation completed for project '{ProjectName}'. Output length: {Length} chars", projectName, srsContent.Length);

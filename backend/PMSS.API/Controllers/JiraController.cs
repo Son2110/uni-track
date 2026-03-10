@@ -310,7 +310,7 @@ public class JiraController : ControllerBase
                 ProjectId = projectId,
                 ProjectName = projectName,
                 SrsContent = srsContent,
-                ModelUsed = "gemini-2.0-flash",
+                ModelUsed = "gpt-4o-mini",
                 GeneratedAt = DateTime.UtcNow
             };
 
