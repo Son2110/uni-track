@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../features/auth/data/models/auth_models.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/workspace/presentation/workspace_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 
 /// Main app shell with persistent bottom navigation bar
 class ScaffoldWithNavBar extends StatefulWidget {
-  const ScaffoldWithNavBar({super.key});
+  final AuthUser currentUser;
+  final VoidCallback onLogout;
+
+  const ScaffoldWithNavBar({
+    super.key,
+    required this.currentUser,
+    required this.onLogout,
+  });
 
   @override
   State<ScaffoldWithNavBar> createState() => _ScaffoldWithNavBarState();
@@ -14,13 +22,6 @@ class ScaffoldWithNavBar extends StatefulWidget {
 
 class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   int _selectedIndex = 0;
-
-  // Define the screens for each tab
-  static const List<Widget> _screens = [
-    HomeScreen(),
-    WorkspaceScreen(),
-    ProfileScreen(),
-  ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -30,14 +31,20 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      const HomeScreen(),
+      const WorkspaceScreen(),
+      ProfileScreen(currentUser: widget.currentUser, onLogout: widget.onLogout),
+    ];
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.navBackground,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),
