@@ -49,6 +49,7 @@ try
         .AddProjections()
         .AddFiltering()
         .AddSorting()
+        .SetPagingOptions(new HotChocolate.Types.Pagination.PagingOptions { MaxPageSize = 200, DefaultPageSize = 50 })
         .ModifyRequestOptions(opt => opt.IncludeExceptionDetails = builder.Environment.IsDevelopment());
 
     builder.Services.AddCors(options =>

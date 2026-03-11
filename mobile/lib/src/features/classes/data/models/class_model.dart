@@ -38,4 +38,23 @@ class ClassModel {
     createdAt: DateTime.parse(json['createdAt'] as String),
     updatedAt: DateTime.parse(json['updatedAt'] as String),
   );
+
+  factory ClassModel.fromGraphQL(Map<String, dynamic> json) {
+    final semester = json['semester'] as Map<String, dynamic>;
+    final course = json['course'] as Map<String, dynamic>;
+    final teacher = json['teacher'] as Map<String, dynamic>;
+    return ClassModel(
+      classId: json['classId'].toString(),
+      semesterId: json['semesterId'].toString(),
+      semesterName: semester['name'] as String,
+      courseId: json['courseId'].toString(),
+      courseCode: course['code'] as String,
+      courseName: course['name'] as String,
+      classCode: json['classCode'] as String,
+      teacherId: json['teacherId'].toString(),
+      teacherName: teacher['name'] as String,
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      updatedAt: DateTime.parse(json['updatedAt'] as String),
+    );
+  }
 }

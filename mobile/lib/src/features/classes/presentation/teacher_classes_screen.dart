@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
 import '../../auth/data/models/auth_models.dart';
 import '../data/models/class_model.dart';
-import '../data/services/class_api_service.dart';
+import '../data/services/class_graphql_service.dart';
 
 class TeacherClassesScreen extends StatefulWidget {
   final AuthUser currentUser;
@@ -14,7 +14,7 @@ class TeacherClassesScreen extends StatefulWidget {
 }
 
 class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
-  final _classApiService = ClassApiService();
+  final _classGraphQLService = ClassGraphQLService();
 
   late Future<List<ClassModel>> _classesFuture;
 
@@ -25,7 +25,7 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
   }
 
   void _loadClasses() {
-    _classesFuture = _classApiService.getTeacherClasses(
+    _classesFuture = _classGraphQLService.getTeacherClasses(
       teacherId: widget.currentUser.userId,
       token: widget.currentUser.token,
     );
