@@ -1,0 +1,331 @@
+import 'package:flutter/material.dart';
+import '../../../../constants/app_colors.dart';
+import '../../../auth/data/models/auth_models.dart';
+import '../../../classes/data/models/class_model.dart';
+import '../../data/repositories/admin_class_repository.dart';
+import 'admin_class_form_screen.dart';
+
+class AdminClassesScreen extends StatefulWidget {
+  final AuthUser currentUser;
+
+  const AdminClassesScreen({super.key, required this.currentUser});
+
+  @override
+  State<AdminClassesScreen> createState() => _AdminClassesScreenState();
+}
+
+class _AdminClassesScreenState extends State<AdminClassesScreen> {
+  final _repository = AdminClassRepository();
+  late Future<List<ClassModel>> _classesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    _classesFuture = _repository.getAllClasses(token: widget.currentUser.token);
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _load());
+    await _classesFuture;
+  }
+
+  Future<void> _openForm({ClassModel? existing}) async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminClassFormScreen(
+          currentUser: widget.currentUser,
+          existing: existing,
+        ),
+      ),
+    );
+    if (saved == true) _refresh();
+  }
+
+  Future<void> _confirmDelete(ClassModel cls) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Class'),
+        content: Text(
+          'Are you sure you want to delete class "${cls.classCode}"? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _repository.delete(
+        classId: cls.classId,
+        token: widget.currentUser.token,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Class deleted'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      String msg = e.toString();
+      if (msg.startsWith('Exception: ')) msg = msg.substring(11);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.error),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text(
+          'Classes',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: AppColors.secondary,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _openForm(),
+        backgroundColor: AppColors.secondary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('New Class'),
+      ),
+      body: FutureBuilder<List<ClassModel>>(
+        future: _classesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(
+              child: CircularProgressIndicator(color: AppColors.secondary),
+            );
+          }
+
+          if (snapshot.hasError) {
+            String msg = snapshot.error.toString();
+            if (msg.startsWith('Exception: ')) msg = msg.substring(11);
+            return _ErrorView(message: msg, onRetry: _refresh);
+          }
+
+          final classes = snapshot.data ?? [];
+
+          if (classes.isEmpty) {
+            return _EmptyView(onAdd: () => _openForm());
+          }
+
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            color: AppColors.secondary,
+            child: ListView.separated(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              itemCount: classes.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, index) => _ClassCard(
+                cls: classes[index],
+                onEdit: () => _openForm(existing: classes[index]),
+                onDelete: () => _confirmDelete(classes[index]),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ClassCard extends StatelessWidget {
+  final ClassModel cls;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _ClassCard({
+    required this.cls,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.class_rounded,
+                color: AppColors.secondary,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    cls.classCode,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${cls.courseCode} · ${cls.semesterName}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    cls.teacherName,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textDisabled,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_rounded, size: 20),
+              color: AppColors.secondary,
+              tooltip: 'Edit',
+            ),
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline_rounded, size: 20),
+              color: AppColors.error,
+              tooltip: 'Delete',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 56,
+              color: AppColors.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Retry'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyView extends StatelessWidget {
+  final VoidCallback onAdd;
+
+  const _EmptyView({required this.onAdd});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.class_outlined, size: 72, color: AppColors.textDisabled),
+          const SizedBox(height: 16),
+          const Text(
+            'No classes yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Tap the button below to add one.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add Class'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.secondary,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
