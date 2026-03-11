@@ -4,10 +4,7 @@ class LoginRequest {
 
   const LoginRequest({required this.email, required this.password});
 
-  Map<String, dynamic> toJson() => {
-        'email': email,
-        'password': password,
-      };
+  Map<String, dynamic> toJson() => {'email': email, 'password': password};
 }
 
 class AuthUser {
@@ -28,11 +25,11 @@ class AuthUser {
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
-        token: json['token'] as String,
-        expiresAt: DateTime.parse(json['expiresAt'] as String),
-        userId: json['userId'].toString(),
-        name: json['name'] as String,
-        email: json['email'] as String,
-        role: json['role'] as String,
-      );
+    token: json['token'] as String,
+    expiresAt: DateTime.parse(json['expiresAt'] as String),
+    userId: json['userId'].toString(),
+    name: json['name'] as String,
+    email: json['email'] as String,
+    role: json['role'] as String,
+  );
 }

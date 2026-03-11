@@ -7,7 +7,7 @@ class AuthRepository {
   final AuthApiService _apiService;
 
   AuthRepository({AuthApiService? apiService})
-      : _apiService = apiService ?? AuthApiService();
+    : _apiService = apiService ?? AuthApiService();
 
   Future<AuthUser> login(String email, String password) async {
     final user = await _apiService.login(
@@ -56,7 +56,10 @@ class AuthRepository {
     final prefs = await SharedPreferences.getInstance();
     await Future.wait([
       prefs.setString(AppConstants.tokenKey, user.token),
-      prefs.setString(AppConstants.tokenExpiryKey, user.expiresAt.toIso8601String()),
+      prefs.setString(
+        AppConstants.tokenExpiryKey,
+        user.expiresAt.toIso8601String(),
+      ),
       prefs.setString(AppConstants.userIdKey, user.userId),
       prefs.setString(AppConstants.userNameKey, user.name),
       prefs.setString(AppConstants.userEmailKey, user.email),

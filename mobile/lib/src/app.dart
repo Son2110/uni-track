@@ -87,11 +87,8 @@ class _AppState extends State<App> {
       home: !_authChecked
           ? const _SplashScreen()
           : _currentUser != null
-              ? ScaffoldWithNavBar(
-                  currentUser: _currentUser!,
-                  onLogout: _onLogout,
-                )
-              : LoginScreen(onLoginSuccess: _onLoginSuccess),
+          ? ScaffoldWithNavBar(currentUser: _currentUser!, onLogout: _onLogout)
+          : LoginScreen(onLoginSuccess: _onLoginSuccess),
     );
   }
 }
@@ -103,9 +100,7 @@ class _SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: AppColors.secondary,
-      body: Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
+      body: Center(child: CircularProgressIndicator(color: Colors.white)),
     );
   }
 }

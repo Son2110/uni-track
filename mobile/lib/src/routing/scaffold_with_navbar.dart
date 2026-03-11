@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../features/auth/data/models/auth_models.dart';
-import '../features/home/presentation/home_screen.dart';
-import '../features/workspace/presentation/workspace_screen.dart';
+import '../features/classes/presentation/teacher_classes_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 
 /// Main app shell with persistent bottom navigation bar
@@ -32,8 +31,7 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      const HomeScreen(),
-      const WorkspaceScreen(),
+      TeacherClassesScreen(currentUser: widget.currentUser),
       ProfileScreen(currentUser: widget.currentUser, onLogout: widget.onLogout),
     ];
 
@@ -63,14 +61,9 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              activeIcon: Icon(Icons.home_rounded, size: 28),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.work_rounded),
-              activeIcon: Icon(Icons.work_rounded, size: 28),
-              label: 'Workspace',
+              icon: Icon(Icons.class_outlined),
+              activeIcon: Icon(Icons.class_rounded, size: 28),
+              label: 'My Classes',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),
