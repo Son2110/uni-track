@@ -31,11 +31,15 @@ class AdminClassRepository {
 
   Future<ClassModel> update({
     required String classId,
+    required String semesterId,
+    required String courseId,
     required String classCode,
     required String teacherId,
     required String token,
   }) => _apiService.update(
     classId: classId,
+    semesterId: semesterId,
+    courseId: courseId,
     classCode: classCode,
     teacherId: teacherId,
     token: token,
