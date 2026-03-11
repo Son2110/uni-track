@@ -3,6 +3,7 @@ import '../../../constants/app_colors.dart';
 import '../../classes/data/models/class_model.dart';
 import '../data/models/project_model.dart';
 import '../data/services/project_graphql_service.dart';
+import 'project_github_contributions_screen.dart';
 
 class ClassProjectsScreen extends StatefulWidget {
   final ClassModel cls;
@@ -155,7 +156,7 @@ class _ClassProjectsScreenState extends State<ClassProjectsScreen> {
               itemCount: projects.length,
               separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) =>
-                  _ProjectCard(project: projects[index]),
+                  _ProjectCard(project: projects[index], token: widget.token),
             ),
           );
         },
@@ -166,96 +167,112 @@ class _ClassProjectsScreenState extends State<ClassProjectsScreen> {
 
 class _ProjectCard extends StatelessWidget {
   final ProjectModel project;
+  final String token;
 
-  const _ProjectCard({required this.project});
+  const _ProjectCard({required this.project, required this.token});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              ProjectGithubContributionsScreen(project: project, token: token),
+        ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.folder_rounded,
-                    color: AppColors.primary,
-                    size: 22,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        project.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      if (project.description != null &&
-                          project.description!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          project.description!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(height: 1),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                const Icon(
-                  Icons.people_outline_rounded,
-                  size: 14,
-                  color: AppColors.textSecondary,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${project.memberCount} member${project.memberCount == 1 ? '' : 's'}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.folder_rounded,
+                      color: AppColors.primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          project.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        if (project.description != null &&
+                            project.description!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            project.description!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Divider(height: 1),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.people_outline_rounded,
+                    size: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${project.memberCount} member${project.memberCount == 1 ? '' : 's'}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppColors.textDisabled,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
