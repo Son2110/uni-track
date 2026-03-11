@@ -13,12 +13,14 @@ public class ClassEnrollmentService : IClassEnrollmentService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ClassEnrollmentService> _logger;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public ClassEnrollmentService(IUnitOfWork unitOfWork, ILogger<ClassEnrollmentService> logger, IMapper mapper)
+    public ClassEnrollmentService(IUnitOfWork unitOfWork, ILogger<ClassEnrollmentService> logger, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<ApiResponse<PagedResult<ClassEnrollmentDto>>> GetAllEnrollmentsAsync(ClassEnrollmentFilterParams filterParams)

@@ -13,12 +13,14 @@ public class ProjectMemberService : IProjectMemberService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ProjectMemberService> _logger;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public ProjectMemberService(IUnitOfWork unitOfWork, ILogger<ProjectMemberService> logger, IMapper mapper)
+    public ProjectMemberService(IUnitOfWork unitOfWork, ILogger<ProjectMemberService> logger, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<ApiResponse<PagedResult<ProjectMemberDto>>> GetAllMembersAsync(ProjectMemberFilterParams filterParams)
@@ -41,12 +43,18 @@ public class ProjectMemberService : IProjectMemberService
                 query = query.Where(pm => pm.UserId == filterParams.UserId.Value);
             }
 
+            if (!string.IsNullOrWhiteSpace(filterParams.SearchTerm))
+            {
+                query = query.Where(pm =>
+                    pm.User.Name.Contains(filterParams.SearchTerm) ||
+                    pm.User.Email.Contains(filterParams.SearchTerm) ||
+                    pm.Project.Name.Contains(filterParams.SearchTerm));
+            }
+
             var totalCount = query.Count();
 
             // Apply sorting
-            query = filterParams.SortDescending 
-                ? query.OrderByDescending(pm => pm.JoinedAt)
-                : query.OrderBy(pm => pm.JoinedAt);
+            query = ApplySorting(query, filterParams.SortBy, filterParams.SortDescending);
 
             // Apply pagination
             var items = query
@@ -133,9 +141,12 @@ public class ProjectMemberService : IProjectMemberService
             await _unitOfWork.ProjectMembers.AddAsync(projectMember);
             await _unitOfWork.SaveChangesAsync();
 
+            // Send notification to the added member
+            await _notificationService.NotifyProjectMemberAddedAsync(dto.UserId, project.Name);
+
             // Retrieve the full membership data
             var membership = await _unitOfWork.ProjectMembers.GetMembershipAsync(dto.ProjectId, dto.UserId);
-            
+
             _logger.LogInformation("Member added successfully: ProjectId={ProjectId}, UserId={UserId}", dto.ProjectId, dto.UserId);
             return ApiResponse<ProjectMemberDto>.SuccessResponse(_mapper.Map<ProjectMemberDto>(membership!), "Member added successfully");
         }
@@ -170,5 +181,19 @@ public class ProjectMemberService : IProjectMemberService
             _logger.LogError(ex, "Error removing member");
             return ApiResponse<bool>.ErrorResponse("Error removing member", ex.Message);
         }
+    }
+
+    private static IQueryable<ProjectMember> ApplySorting(IQueryable<ProjectMember> query, string? sortBy, bool descending)
+    {
+        if (string.IsNullOrWhiteSpace(sortBy))
+            return query.OrderByDescending(pm => pm.JoinedAt);
+
+        return sortBy.ToLower() switch
+        {
+            "joinedat" => descending ? query.OrderByDescending(pm => pm.JoinedAt) : query.OrderBy(pm => pm.JoinedAt),
+            "username" => descending ? query.OrderByDescending(pm => pm.User.Name) : query.OrderBy(pm => pm.User.Name),
+            "projectname" => descending ? query.OrderByDescending(pm => pm.Project.Name) : query.OrderBy(pm => pm.Project.Name),
+            _ => query.OrderByDescending(pm => pm.JoinedAt)
+        };
     }
 }

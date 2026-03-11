@@ -1,39 +1,50 @@
-import React from 'react';
-import type { LucideIcon } from 'lucide-react';
-import { TrendingUp } from 'lucide-react';
+import React from "react";
+import type { LucideIcon } from "lucide-react";
+import { TrendingUp } from "lucide-react";
 
 export interface StatsCardProps {
-    icon: LucideIcon;
-    title: string;
-    value: string | number;
-    trend: number;
-    bgIcon: LucideIcon;
+  icon: LucideIcon;
+  title: string;
+  value: string | number;
+  trend?: number;
+  bgColor: string;
+  iconBg: string;
 }
 
-export const StatsCard: React.FC<StatsCardProps> = ({ icon: Icon, title, value, trend, bgIcon: BgIcon }) => {
-    return (
-        <div className="bg-card-light dark:bg-card-dark p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 flex flex-col justify-between h-36 relative overflow-hidden group hover:shadow-md transition-shadow">
-            {/* Background Icon */}
-            <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <BgIcon className="w-20 h-20 text-primary" />
-            </div>
+export const StatsCard: React.FC<StatsCardProps> = ({
+  icon: Icon,
+  title,
+  value,
+  trend,
+  bgColor,
+  iconBg,
+}) => {
+  return (
+    <div
+      className={`${bgColor} p-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden`}
+    >
+      {/* Decorative gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
 
-            {/* Header with Icon and Trend */}
-            <div className="flex justify-between items-start z-10">
-                <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-primary/10 text-primary">
-                    <Icon className="w-6 h-6" />
-                </div>
-                <span className="flex items-center text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-1 rounded-full">
-                    <TrendingUp className="w-3.5 h-3.5 mr-1" />
-                    +{trend}%
-                </span>
-            </div>
+      {/* Icon container */}
+      <div
+        className={`${iconBg} w-14 h-14 rounded-xl flex items-center justify-center mb-4 relative z-10`}
+      >
+        <Icon className="w-7 h-7 text-white" />
+      </div>
 
-            {/* Stats Content */}
-            <div className="flex flex-col gap-1 z-10">
-                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">{title}</p>
-                <h3 className="text-3xl font-bold text-slate-900 dark:text-white">{value}</h3>
-            </div>
-        </div>
-    );
+      {/* Stats Content */}
+      <div className="relative z-10">
+        <p className="text-white/80 text-sm font-medium mb-2">{title}</p>
+        <h3 className="text-4xl font-bold text-white mb-2">{value}</h3>
+        {trend !== undefined && (
+          <div className="flex items-center gap-1 text-white/90">
+            <TrendingUp className="w-4 h-4" />
+            <span className="text-sm font-semibold">+{trend}%</span>
+            <span className="text-xs text-white/70 ml-1">from last month</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };

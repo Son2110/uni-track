@@ -1,10 +1,14 @@
 using AutoMapper;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using PMSS.Application.Interfaces.Repositories;
 using PMSS.Application.Interfaces.Services;
 using PMSS.Application.Mappings;
+using PMSS.Infrastructure.Configuration;
 using PMSS.Infrastructure.Data;
 using PMSS.Infrastructure.Repositories;
 using PMSS.Infrastructure.Services;
@@ -24,6 +28,30 @@ public static class ServiceCollectionExtensions
         var config = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
         services.AddSingleton<IMapper>(config.CreateMapper());
 
+        // Configure JWT settings
+        var jwtSettings = configuration.GetSection("JwtSettings");
+        services.Configure<JwtSettings>(jwtSettings);
+
+        services.AddAuthentication(options =>
+        {
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwtSettings["Issuer"],
+                ValidAudience = jwtSettings["Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["SecretKey"]!)),
+                ClockSkew = TimeSpan.Zero
+            };
+        });
+
         services.AddScoped<ISemesterRepository, SemesterRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ICourseRepository, CourseRepository>();
@@ -33,9 +61,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IGithubRepoRepository, GithubRepoRepository>();
         services.AddScoped<IRepoContributorRepository, RepoContributorRepository>();
+        services.AddScoped<IWeeklyContributionRepository, WeeklyContributionRepository>();
+        services.AddScoped<IUserWeeklyContributionRepository, UserWeeklyContributionRepository>();
         services.AddScoped<IJiraConfigRepository, JiraConfigRepository>();
         services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
-        
+        services.AddScoped<INotificationRepository, NotificationRepository>();
+
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddHttpClient();
@@ -50,6 +81,17 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProjectService, ProjectService>();
         services.AddScoped<IProjectMemberService, ProjectMemberService>();
         services.AddScoped<IGithubRepoService, GithubRepoService>();
+        services.AddScoped<IGithubDataSyncService, GithubDataSyncService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IAccessRequestService, AccessRequestService>();
+        services.AddScoped<IStudentActivityMonitorService, StudentActivityMonitorService>();
+
+        // Register background service for automated GitHub data sync at midnight
+        services.AddHostedService<GithubDataSyncBackgroundService>();
+
+        // Register background service for weekly student activity monitoring
+        services.AddHostedService<StudentActivityMonitorBackgroundService>();
 
         return services;
     }

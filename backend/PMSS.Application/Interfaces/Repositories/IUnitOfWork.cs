@@ -11,9 +11,12 @@ public interface IUnitOfWork : IDisposable
     IProjectMemberRepository ProjectMembers { get; }
     IGithubRepoRepository GithubRepos { get; }
     IRepoContributorRepository RepoContributors { get; }
+    IWeeklyContributionRepository WeeklyContributions { get; }
+    IUserWeeklyContributionRepository UserWeeklyContributions { get; }
     IJiraConfigRepository JiraConfigs { get; }
     IAccessRequestRepository AccessRequests { get; }
-    
+    INotificationRepository Notifications { get; }
+
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

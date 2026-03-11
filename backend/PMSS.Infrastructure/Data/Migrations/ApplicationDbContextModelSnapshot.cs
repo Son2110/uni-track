@@ -165,6 +165,9 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.Property<bool>("IsPrivate")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("LastSyncedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier");
 
@@ -177,6 +180,21 @@ namespace PMSS.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
+
+                    b.Property<int>("TotalAdditions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("TotalCommits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("TotalDeletions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -233,6 +251,45 @@ namespace PMSS.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("JiraConfigs");
+                });
+
+            modelBuilder.Entity("PMSS.Domain.Entities.Notification", b =>
+                {
+                    b.Property<Guid>("NotificationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("ReadAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("NotificationId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "IsRead");
+
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.Project", b =>
@@ -394,6 +451,109 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("PMSS.Domain.Entities.UserWeeklyContribution", b =>
+                {
+                    b.Property<Guid>("UserWeeklyContributionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Additions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("Commits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Deletions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<string>("GithubUsername")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("nvarchar(255)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("WeeklyContributionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("UserWeeklyContributionId");
+
+                    b.HasIndex("GithubUsername");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("WeeklyContributionId");
+
+                    b.HasIndex("WeeklyContributionId", "GithubUsername")
+                        .IsUnique();
+
+                    b.ToTable("UserWeeklyContributions");
+                });
+
+            modelBuilder.Entity("PMSS.Domain.Entities.WeeklyContribution", b =>
+                {
+                    b.Property<Guid>("WeeklyContributionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("GithubRepoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("TotalAdditions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("TotalCommits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("TotalDeletions")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(0);
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("WeekEnd")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("WeekStart")
+                        .HasColumnType("datetime2");
+
+                    b.Property<long>("WeekTimestamp")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("WeeklyContributionId");
+
+                    b.HasIndex("GithubRepoId");
+
+                    b.HasIndex("GithubRepoId", "WeekTimestamp")
+                        .IsUnique();
+
+                    b.HasIndex("WeekStart", "WeekEnd");
+
+                    b.ToTable("WeeklyContributions");
+                });
+
             modelBuilder.Entity("PMSS.Domain.Entities.AccessRequest", b =>
                 {
                     b.HasOne("PMSS.Domain.Entities.Project", "Project")
@@ -489,6 +649,17 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("PMSS.Domain.Entities.Notification", b =>
+                {
+                    b.HasOne("PMSS.Domain.Entities.User", "User")
+                        .WithMany("Notifications")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("PMSS.Domain.Entities.Project", b =>
                 {
                     b.HasOne("PMSS.Domain.Entities.Class", "Class")
@@ -537,6 +708,35 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("PMSS.Domain.Entities.UserWeeklyContribution", b =>
+                {
+                    b.HasOne("PMSS.Domain.Entities.User", "User")
+                        .WithMany("WeeklyContributions")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("PMSS.Domain.Entities.WeeklyContribution", "WeeklyContribution")
+                        .WithMany("UserContributions")
+                        .HasForeignKey("WeeklyContributionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+
+                    b.Navigation("WeeklyContribution");
+                });
+
+            modelBuilder.Entity("PMSS.Domain.Entities.WeeklyContribution", b =>
+                {
+                    b.HasOne("PMSS.Domain.Entities.GithubRepo", "GithubRepo")
+                        .WithMany("WeeklyContributions")
+                        .HasForeignKey("GithubRepoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("GithubRepo");
+                });
+
             modelBuilder.Entity("PMSS.Domain.Entities.Class", b =>
                 {
                     b.Navigation("ClassEnrollments");
@@ -552,6 +752,8 @@ namespace PMSS.Infrastructure.Data.Migrations
             modelBuilder.Entity("PMSS.Domain.Entities.GithubRepo", b =>
                 {
                     b.Navigation("RepoContributors");
+
+                    b.Navigation("WeeklyContributions");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.Project", b =>
@@ -576,11 +778,20 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.Navigation("ClassEnrollments");
 
+                    b.Navigation("Notifications");
+
                     b.Navigation("ProjectMembers");
 
                     b.Navigation("RepoContributors");
 
                     b.Navigation("TaughtClasses");
+
+                    b.Navigation("WeeklyContributions");
+                });
+
+            modelBuilder.Entity("PMSS.Domain.Entities.WeeklyContribution", b =>
+                {
+                    b.Navigation("UserContributions");
                 });
 #pragma warning restore 612, 618
         }

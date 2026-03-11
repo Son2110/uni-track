@@ -73,6 +73,10 @@ public class RepoContributionDto
     public string RepoOwnerName { get; set; } = string.Empty;
     public string RepoName { get; set; } = string.Empty;
     public string RepoUrl { get; set; } = string.Empty;
+    public int TotalCommits { get; set; }
+    public int TotalAdditions { get; set; }
+    public int TotalDeletions { get; set; }
+    public DateTime? LastSyncedAt { get; set; }
 }
 
 public class WeeklyCommitDto

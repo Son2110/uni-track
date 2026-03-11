@@ -18,8 +18,11 @@ public class ApplicationDbContext : DbContext
     public DbSet<ProjectMember> ProjectMembers { get; set; }
     public DbSet<GithubRepo> GithubRepos { get; set; }
     public DbSet<RepoContributor> RepoContributors { get; set; }
+    public DbSet<WeeklyContribution> WeeklyContributions { get; set; }
+    public DbSet<UserWeeklyContribution> UserWeeklyContributions { get; set; }
     public DbSet<JiraConfig> JiraConfigs { get; set; }
     public DbSet<AccessRequest> AccessRequests { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

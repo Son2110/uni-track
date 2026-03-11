@@ -18,8 +18,11 @@ public class UnitOfWork : IUnitOfWork
     public IProjectMemberRepository ProjectMembers { get; }
     public IGithubRepoRepository GithubRepos { get; }
     public IRepoContributorRepository RepoContributors { get; }
+    public IWeeklyContributionRepository WeeklyContributions { get; }
+    public IUserWeeklyContributionRepository UserWeeklyContributions { get; }
     public IJiraConfigRepository JiraConfigs { get; }
     public IAccessRequestRepository AccessRequests { get; }
+    public INotificationRepository Notifications { get; }
 
     public UnitOfWork(
         ApplicationDbContext context,
@@ -32,8 +35,11 @@ public class UnitOfWork : IUnitOfWork
         IProjectMemberRepository projectMembers,
         IGithubRepoRepository githubRepos,
         IRepoContributorRepository repoContributors,
+        IWeeklyContributionRepository weeklyContributions,
+        IUserWeeklyContributionRepository userWeeklyContributions,
         IJiraConfigRepository jiraConfigs,
-        IAccessRequestRepository accessRequests)
+        IAccessRequestRepository accessRequests,
+        INotificationRepository notifications)
     {
         _context = context;
         Semesters = semesters;
@@ -45,8 +51,11 @@ public class UnitOfWork : IUnitOfWork
         ProjectMembers = projectMembers;
         GithubRepos = githubRepos;
         RepoContributors = repoContributors;
+        WeeklyContributions = weeklyContributions;
+        UserWeeklyContributions = userWeeklyContributions;
         JiraConfigs = jiraConfigs;
         AccessRequests = accessRequests;
+        Notifications = notifications;
     }
 
     public async Task<int> SaveChangesAsync()

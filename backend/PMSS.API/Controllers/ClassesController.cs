@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.Class;
 using PMSS.Application.Interfaces.Services;
@@ -10,6 +11,7 @@ namespace PMSS.API.Controllers;
 [ApiController]
 [Route("api/v1/classes")]
 [Produces("application/json")]
+[Authorize]
 public class ClassesController : ControllerBase
 {
     private readonly IClassService _classService;
@@ -28,35 +30,11 @@ public class ClassesController : ControllerBase
     /// <response code="200">Returns the list of classes</response>
     /// <response code="400">If the filter parameters are invalid</response>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] ClassFilterParams filterParams)
     {
-        // Handle filtering via query params (RESTful approach)
-        if (filterParams.TeacherId.HasValue)
-        {
-            var teacherResult = await _classService.GetClassesByTeacherIdAsync(filterParams.TeacherId.Value);
-            if (!teacherResult.Success)
-                return BadRequest(teacherResult);
-            return Ok(teacherResult);
-        }
-
-        if (filterParams.SemesterId.HasValue)
-        {
-            var semesterResult = await _classService.GetClassesBySemesterIdAsync(filterParams.SemesterId.Value);
-            if (!semesterResult.Success)
-                return BadRequest(semesterResult);
-            return Ok(semesterResult);
-        }
-
-        if (filterParams.CourseId.HasValue)
-        {
-            var courseResult = await _classService.GetClassesByCourseIdAsync(filterParams.CourseId.Value);
-            if (!courseResult.Success)
-                return BadRequest(courseResult);
-            return Ok(courseResult);
-        }
-
         var result = await _classService.GetAllClassesAsync(filterParams);
 
         if (!result.Success)
@@ -73,6 +51,7 @@ public class ClassesController : ControllerBase
     /// <response code="200">Returns the class</response>
     /// <response code="404">If the class is not found</response>
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)
@@ -93,6 +72,7 @@ public class ClassesController : ControllerBase
     /// <response code="201">Returns the newly created class</response>
     /// <response code="400">If the request data is invalid</response>
     [HttpPost]
+    [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Create([FromBody] CreateClassDto dto)
@@ -118,6 +98,7 @@ public class ClassesController : ControllerBase
     /// <response code="400">If the request data is invalid</response>
     /// <response code="404">If the class is not found</response>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -142,6 +123,7 @@ public class ClassesController : ControllerBase
     /// <response code="204">Class deleted successfully</response>
     /// <response code="404">If the class is not found</response>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
