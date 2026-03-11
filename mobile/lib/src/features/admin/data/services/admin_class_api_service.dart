@@ -42,6 +42,8 @@ class AdminClassApiService {
 
   Future<ClassModel> update({
     required String classId,
+    required String semesterId,
+    required String courseId,
     required String classCode,
     required String teacherId,
     required String token,
@@ -54,7 +56,12 @@ class AdminClassApiService {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $token',
       },
-      body: jsonEncode({'classCode': classCode, 'teacherId': teacherId}),
+      body: jsonEncode({
+        'semesterId': semesterId,
+        'courseId': courseId,
+        'classCode': classCode,
+        'teacherId': teacherId,
+      }),
     );
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;

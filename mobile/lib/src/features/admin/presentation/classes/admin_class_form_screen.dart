@@ -115,6 +115,8 @@ class _AdminClassFormScreenState extends State<AdminClassFormScreen> {
       if (_isEditing) {
         await _classRepository.update(
           classId: widget.existing!.classId,
+          semesterId: _selectedSemester!.semesterId,
+          courseId: _selectedCourse!.courseId,
           classCode: _classCodeController.text.trim(),
           teacherId: _teacherIdController.text.trim(),
           token: widget.currentUser.token,
@@ -207,7 +209,6 @@ class _AdminClassFormScreenState extends State<AdminClassFormScreen> {
                   children: [
                     _FormCard(
                       children: [
-                        // Semester dropdown — disabled on edit since only classCode & teacherId can change
                         DropdownButtonFormField<SemesterModel>(
                           value: _selectedSemester,
                           decoration: const InputDecoration(
@@ -223,15 +224,15 @@ class _AdminClassFormScreenState extends State<AdminClassFormScreen> {
                                 ),
                               )
                               .toList(),
-                          onChanged: _isEditing
-                              ? null
-                              : (v) => setState(() => _selectedSemester = v),
+                          onChanged: (v) =>
+                              setState(() => _selectedSemester = v),
                           validator: (_) =>
                               _selectedSemester == null ? 'Required' : null,
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<CourseModel>(
                           value: _selectedCourse,
+                          isExpanded: true,
                           decoration: const InputDecoration(
                             labelText: 'Course *',
                             prefixIcon: Icon(Icons.book_rounded),
@@ -241,13 +242,14 @@ class _AdminClassFormScreenState extends State<AdminClassFormScreen> {
                               .map(
                                 (c) => DropdownMenuItem(
                                   value: c,
-                                  child: Text('${c.code} – ${c.name}'),
+                                  child: Text(
+                                    '${c.code} – ${c.name}',
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               )
                               .toList(),
-                          onChanged: _isEditing
-                              ? null
-                              : (v) => setState(() => _selectedCourse = v),
+                          onChanged: (v) => setState(() => _selectedCourse = v),
                           validator: (_) =>
                               _selectedCourse == null ? 'Required' : null,
                         ),
