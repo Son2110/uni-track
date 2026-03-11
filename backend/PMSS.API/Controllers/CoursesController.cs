@@ -29,6 +29,7 @@ public class CoursesController : ControllerBase
     /// <response code="200">Returns the list of courses</response>
     /// <response code="400">If the filter parameters are invalid</response>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] CourseFilterParams filterParams)
@@ -49,6 +50,7 @@ public class CoursesController : ControllerBase
     /// <response code="200">Returns the course</response>
     /// <response code="404">If the course is not found</response>
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)

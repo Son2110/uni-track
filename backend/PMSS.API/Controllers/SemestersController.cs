@@ -29,6 +29,7 @@ public class SemestersController : ControllerBase
     /// <response code="200">Returns the list of semesters</response>
     /// <response code="400">If the filter parameters are invalid</response>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] SemesterFilterParams filterParams)
@@ -49,6 +50,7 @@ public class SemestersController : ControllerBase
     /// <response code="200">Returns the semester</response>
     /// <response code="404">If the semester is not found</response>
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)
