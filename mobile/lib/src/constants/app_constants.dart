@@ -4,7 +4,7 @@ class AppConstants {
   // API Base URL
   // Android emulator: http://10.0.2.2:5068
   // iOS simulator / web / desktop: http://localhost:5068
-  static const String baseUrl = 'http://10.0.2.2:5068';
+  static const String baseUrl = 'https://localhost:7136';
 
   // Shared Preferences Keys
   static const String tokenKey = 'auth_token';

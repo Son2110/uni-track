@@ -15,7 +15,23 @@ class AuthApiService {
       body: jsonEncode(request.toJson()),
     );
 
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final rawBody = response.body.trim();
+
+    if (rawBody.isEmpty) {
+      throw Exception(
+        'Server returned an empty response (HTTP ${response.statusCode}). '
+        'Make sure the backend is running on ${AppConstants.baseUrl}.',
+      );
+    }
+
+    Map<String, dynamic> body;
+    try {
+      body = jsonDecode(rawBody) as Map<String, dynamic>;
+    } catch (_) {
+      throw Exception(
+        'Unexpected response from server (HTTP ${response.statusCode}): $rawBody',
+      );
+    }
 
     if (response.statusCode == 200 && body['success'] == true) {
       return AuthUser.fromJson(body['data'] as Map<String, dynamic>);
