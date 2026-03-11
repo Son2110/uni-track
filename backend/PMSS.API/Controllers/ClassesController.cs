@@ -123,7 +123,7 @@ public class ClassesController : ControllerBase
     /// <response code="204">Class deleted successfully</response>
     /// <response code="404">If the class is not found</response>
     [HttpDelete("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
