@@ -1,16 +1,20 @@
 using AutoMapper;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using PMSS.Application.DTOs.Common;
 using PMSS.Application.DTOs.GithubRepo;
 using PMSS.Application.DTOs.Project;
 using PMSS.Application.Interfaces.Repositories;
 using PMSS.Application.Interfaces.Services;
 using PMSS.Domain.Entities;
+using PMSS.Infrastructure.Configuration;
+using PMSS.Infrastructure.Utilities;
 
 namespace PMSS.Infrastructure.Services;
 
-public class ProjectService(IUnitOfWork unitOfWork, ILogger<ProjectService> logger, IMapper mapper) : IProjectService
+public class ProjectService(IUnitOfWork unitOfWork, ILogger<ProjectService> logger, IMapper mapper, IOptions<JwtSettings> jwtSettings) : IProjectService
 {
+    private readonly string _encryptionKey = jwtSettings.Value.SecretKey;
     private record ProjectData(Project Project, Semester Semester, List<GithubRepo> Repos, List<RepoContributor> Contributors, List<User> Users, List<WeeklyContribution> WeeklyContributions);
 
     public async Task<ApiResponse<PagedResult<ProjectDto>>> GetAllProjectsAsync(ProjectFilterParams filterParams)
@@ -90,7 +94,7 @@ public class ProjectService(IUnitOfWork unitOfWork, ILogger<ProjectService> logg
             if (classEntity == null)
                 return ApiResponse<ProjectDto>.ErrorResponse("Class not found");
 
-            var now = DateTime.Now;
+            var now = DateTime.UtcNow;
             var project = new Project
             {
                 ClassId = dto.ClassId,
@@ -102,6 +106,30 @@ public class ProjectService(IUnitOfWork unitOfWork, ILogger<ProjectService> logg
 
             await unitOfWork.Projects.AddAsync(project);
             await unitOfWork.SaveChangesAsync();
+
+            // Auto-create Jira config if all Jira fields are provided
+            if (!string.IsNullOrWhiteSpace(dto.JiraUrl) &&
+                !string.IsNullOrWhiteSpace(dto.JiraEmail) &&
+                !string.IsNullOrWhiteSpace(dto.JiraApiToken) &&
+                !string.IsNullOrWhiteSpace(dto.JiraProjectKey))
+            {
+                var jiraConfig = new JiraConfig
+                {
+                    JiraConfigId = Guid.NewGuid(),
+                    ProjectId = project.ProjectId,
+                    JiraUrl = dto.JiraUrl.TrimEnd('/'),
+                    Email = dto.JiraEmail,
+                    ApiToken = AesEncryptionHelper.Encrypt(dto.JiraApiToken, _encryptionKey),
+                    ProjectKey = dto.JiraProjectKey.ToUpperInvariant(),
+                    IsActive = true,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                };
+
+                await unitOfWork.JiraConfigs.AddAsync(jiraConfig);
+                await unitOfWork.SaveChangesAsync();
+                logger.LogInformation("Jira config auto-created for project {ProjectId}", project.ProjectId);
+            }
 
             project = await unitOfWork.Projects.GetByIdAsync(project.ProjectId);
             return ApiResponse<ProjectDto>.SuccessResponse(mapper.Map<ProjectDto>(project!), "Project created successfully");

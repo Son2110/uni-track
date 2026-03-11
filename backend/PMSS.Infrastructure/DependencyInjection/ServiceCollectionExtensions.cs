@@ -32,6 +32,9 @@ public static class ServiceCollectionExtensions
         var jwtSettings = configuration.GetSection("JwtSettings");
         services.Configure<JwtSettings>(jwtSettings);
 
+        // Configure GitHub Models settings (free AI for SRS generation)
+        services.Configure<GitHubModelsSettings>(configuration.GetSection("GitHubModels"));
+
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -82,6 +85,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IGithubRepoService, GithubRepoService>();
         services.AddScoped<IGithubDataSyncService, GithubDataSyncService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ISrsGenerationService, SrsGenerationService>();
+        services.AddScoped<IAiSrsGenerationService, AiSrsGenerationService>();
 
         // Register background service for automated GitHub data sync at midnight
         services.AddHostedService<GithubDataSyncBackgroundService>();

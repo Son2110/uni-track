@@ -4,6 +4,9 @@ using PMSS.Application.DTOs.JiraConfig;
 using PMSS.Application.Interfaces.Repositories;
 using PMSS.Application.Interfaces.Services;
 using PMSS.Domain.Entities;
+using PMSS.Infrastructure.Configuration;
+using PMSS.Infrastructure.Utilities;
+using Microsoft.Extensions.Options;
 
 namespace PMSS.API.Controllers;
 
@@ -18,11 +21,13 @@ public class JiraController : ControllerBase
 {
     private readonly IJiraApiService _jiraApiService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly string _encryptionKey;
 
-    public JiraController(IJiraApiService jiraApiService, IUnitOfWork unitOfWork)
+    public JiraController(IJiraApiService jiraApiService, IUnitOfWork unitOfWork, IOptions<JwtSettings> jwtSettings)
     {
         _jiraApiService = jiraApiService;
         _unitOfWork = unitOfWork;
+        _encryptionKey = jwtSettings.Value.SecretKey;
     }
 
     /// <summary>
@@ -65,7 +70,7 @@ public class JiraController : ControllerBase
             ProjectId = projectId,
             JiraUrl = dto.JiraUrl.TrimEnd('/'),
             Email = dto.Email,
-            ApiToken = dto.ApiToken,
+            ApiToken = AesEncryptionHelper.Encrypt(dto.ApiToken, _encryptionKey),
             ProjectKey = dto.ProjectKey.ToUpperInvariant(),
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
@@ -155,7 +160,7 @@ public class JiraController : ControllerBase
             config.Email = dto.Email;
 
         if (!string.IsNullOrWhiteSpace(dto.ApiToken))
-            config.ApiToken = dto.ApiToken;
+            config.ApiToken = AesEncryptionHelper.Encrypt(dto.ApiToken, _encryptionKey);
 
         if (!string.IsNullOrWhiteSpace(dto.ProjectKey))
             config.ProjectKey = dto.ProjectKey.ToUpperInvariant();
@@ -225,6 +230,10 @@ public class JiraController : ControllerBase
         {
             return BadRequest(new { error = "Connection failed", details = ex.Message, connected = false });
         }
+        catch (FormatException)
+        {
+            return BadRequest(new { error = "The stored API token is corrupted. Please update your Jira configuration with a valid API token.", connected = false });
+        }
     }
 
     /// <summary>
@@ -259,6 +268,10 @@ public class JiraController : ControllerBase
         catch (HttpRequestException ex)
         {
             return StatusCode(StatusCodes.Status502BadGateway, new { error = "Failed to communicate with Jira API", details = ex.Message });
+        }
+        catch (FormatException)
+        {
+            return BadRequest(new { error = "The stored API token is corrupted. Please update your Jira configuration with a valid API token." });
         }
     }
 

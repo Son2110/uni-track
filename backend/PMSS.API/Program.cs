@@ -1,6 +1,8 @@
 using PMSS.Infrastructure.DependencyInjection;
 using PMSS.Infrastructure.Middleware;
+using PMSS.Infrastructure.Data;
 using PMSS.API.GraphQL;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Serilog;
 
@@ -62,6 +64,12 @@ try
     });
 
     var app = builder.Build();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await dbContext.Database.MigrateAsync();
+    }
 
     if (app.Environment.IsDevelopment())
     {
