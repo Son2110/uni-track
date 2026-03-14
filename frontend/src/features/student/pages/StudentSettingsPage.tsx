@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { useUser, useUpdateUser } from "@/features/users/api/useUsers";
+import {
+  useUser,
+  useUpdateUser,
+  useUpdatePassword,
+} from "@/features/users/api/useUsers";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { User, Mail, Github, Lock } from "lucide-react";
 
@@ -14,14 +18,14 @@ export function StudentSettingsPage() {
   const updateMutation = useUpdateUser();
 
   const [formData, setFormData] = useState({
-    name: user?.name || "",
-    email: user?.email || "",
-    githubUsername: user?.githubUsername || "",
-    githubEmail: user?.githubEmail || "",
+    name: "",
+    email: "",
+    githubUsername: "",
+    githubEmail: "",
   });
 
   // Update form data when user data loads
-  useState(() => {
+  useEffect(() => {
     if (user) {
       setFormData({
         name: user.name,
@@ -30,11 +34,11 @@ export function StudentSettingsPage() {
         githubEmail: user.githubEmail || "",
       });
     }
-  });
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authUser) return;
+    if (!authUser || !user) return;
 
     try {
       await updateMutation.mutateAsync({
@@ -44,7 +48,7 @@ export function StudentSettingsPage() {
           email: formData.email,
           githubUsername: formData.githubUsername || undefined,
           githubEmail: formData.githubEmail || undefined,
-          role: user!.role,
+          role: user.role,
         },
       });
       alert("Profile updated successfully!");
@@ -195,6 +199,7 @@ function ChangePasswordModal({
   onClose,
   userId,
 }: ChangePasswordModalProps) {
+  const updatePasswordMutation = useUpdatePassword();
   const [formData, setFormData] = useState({
     currentPassword: "",
     newPassword: "",
@@ -209,9 +214,17 @@ function ChangePasswordModal({
       return;
     }
 
+    if (formData.newPassword.length < 6) {
+      alert("Password must be at least 6 characters");
+      return;
+    }
+
     try {
-      // TODO: Implement password change API call
-      console.log("Change password for user:", userId);
+      await updatePasswordMutation.mutateAsync({
+        id: userId,
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+      });
       alert("Password changed successfully!");
       setFormData({
         currentPassword: "",
@@ -221,7 +234,7 @@ function ChangePasswordModal({
       onClose();
     } catch (error) {
       console.error("Failed to change password:", error);
-      alert("Failed to change password");
+      alert("Failed to change password. Please check your current password.");
     }
   };
 
@@ -264,7 +277,9 @@ function ChangePasswordModal({
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit">Change Password</Button>
+          <Button type="submit" isLoading={updatePasswordMutation.isPending}>
+            Change Password
+          </Button>
         </div>
       </form>
     </Modal>
