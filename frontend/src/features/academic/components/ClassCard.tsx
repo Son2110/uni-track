@@ -25,11 +25,11 @@ export const ClassCard: React.FC<ClassCardProps> = ({
 }) => {
   return (
     <Card className="p-5 flex flex-col gap-4 hover:shadow-md transition-shadow">
-      {/* Header */}
-      <div className="flex justify-between items-start">
-        <div className="w-12 h-12 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-sidebar-blue dark:text-blue-300 flex items-center justify-center font-bold text-sm">
-          {classItem.category || classItem.classCode.substring(0, 4)}
-        </div>
+      {/* Header - Class Code with Edit/Delete */}
+      <div className="flex justify-between items-center">
+        <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+          {classItem.classCode}
+        </h3>
         <div className="flex items-center gap-2">
           <button
             onClick={onEdit}
@@ -50,9 +50,6 @@ export const ClassCard: React.FC<ClassCardProps> = ({
 
       {/* Class Info */}
       <div>
-        <h3 className="font-bold text-lg text-slate-900 dark:text-white mb-1">
-          {classItem.classCode}
-        </h3>
         <p className="text-sm text-slate-500 dark:text-slate-400">
           {classItem.courseName || "Course Name"}
         </p>

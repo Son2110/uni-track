@@ -68,7 +68,7 @@ export function ProjectGithubTab({
       const result = await syncMutation.mutateAsync(projectId);
       console.log("Sync result:", result);
       alert(
-        `Sync completed! ${result.data?.successfulSyncs || 0}/${result.data?.totalRepositories || 0} repositories synced successfully.`,
+        `Sync completed! ${result?.successfulSyncs || 0}/${result?.totalRepositories || 0} repositories synced successfully.`,
       );
     } catch (error: any) {
       console.error("Failed to sync GitHub data:", error);

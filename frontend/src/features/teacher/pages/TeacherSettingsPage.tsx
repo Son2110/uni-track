@@ -4,7 +4,11 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { useUser, useUpdateUser } from "@/features/users/api/useUsers";
+import {
+  useUser,
+  useUpdateUser,
+  useUpdatePassword,
+} from "@/features/users/api/useUsers";
 import { useAuth } from "@/features/auth/context/AuthContext";
 
 export function TeacherSettingsPage() {
@@ -34,12 +38,15 @@ export function TeacherSettingsPage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!authUser) return;
+    if (!authUser || !user) return;
 
     try {
       await updateMutation.mutateAsync({
         id: authUser.userId,
-        data: formData,
+        data: {
+          ...formData,
+          role: user.role,
+        },
       });
       alert("Profile updated successfully!");
     } catch (error) {
@@ -155,7 +162,10 @@ export function TeacherSettingsPage() {
 
       {/* Password Change Modal */}
       {showPasswordModal && (
-        <PasswordChangeModal onClose={() => setShowPasswordModal(false)} />
+        <PasswordChangeModal
+          onClose={() => setShowPasswordModal(false)}
+          userId={authUser?.userId || ""}
+        />
       )}
     </div>
   );
@@ -167,15 +177,16 @@ export function TeacherSettingsPage() {
 
 interface PasswordChangeModalProps {
   onClose: () => void;
+  userId: string;
 }
 
-function PasswordChangeModal({ onClose }: PasswordChangeModalProps) {
+function PasswordChangeModal({ onClose, userId }: PasswordChangeModalProps) {
+  const updatePasswordMutation = useUpdatePassword();
   const [formData, setFormData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,19 +196,27 @@ function PasswordChangeModal({ onClose }: PasswordChangeModalProps) {
       return;
     }
 
-    setIsSubmitting(true);
+    if (formData.newPassword.length < 6) {
+      alert("Password must be at least 6 characters");
+      return;
+    }
 
     try {
-      // TODO: Implement password change API call
-      console.log("Changing password");
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await updatePasswordMutation.mutateAsync({
+        id: userId,
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword,
+      });
       alert("Password changed successfully!");
+      setFormData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       onClose();
     } catch (error) {
       console.error("Failed to change password:", error);
-      alert("Failed to change password");
-    } finally {
-      setIsSubmitting(false);
+      alert("Failed to change password. Please check your current password.");
     }
   };
 
@@ -238,7 +257,7 @@ function PasswordChangeModal({ onClose }: PasswordChangeModalProps) {
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={isSubmitting}>
+          <Button type="submit" isLoading={updatePasswordMutation.isPending}>
             Change Password
           </Button>
         </div>

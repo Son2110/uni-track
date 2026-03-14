@@ -1,15 +1,10 @@
 import React from "react";
 import { Edit, Trash2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
+import type { Course } from "@/types";
 
-// Extended Course interface with display fields
 export interface CourseCardProps {
-  course: {
-    courseId: string;
-    code: string;
-    name: string;
-    description: string;
-  };
+  course: Course;
   onEdit?: () => void;
   onDelete?: () => void;
   onViewDetails?: () => void;
@@ -26,9 +21,6 @@ export const CourseCard: React.FC<CourseCardProps> = ({
       {/* Course Header */}
       <div className="h-32 bg-sidebar-blue relative p-6 flex flex-col justify-between">
         <div className="absolute top-4 right-4 flex items-center gap-2">
-          <span className="bg-white/20 text-white text-xs px-2 py-1 rounded font-medium">
-            {course.code}
-          </span>
           <button
             onClick={onEdit}
             className="p-1.5 bg-white/20 hover:bg-white/30 text-white rounded-md transition-colors opacity-0 group-hover:opacity-100"

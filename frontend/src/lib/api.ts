@@ -48,6 +48,18 @@ class ApiClient {
       headers,
     });
 
+    // Handle 401 Unauthorized - token expired or invalid
+    if (response.status === 401) {
+      // Clear auth data
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("authUser");
+
+      // Redirect to login
+      window.location.href = "/login";
+
+      throw new Error("Session expired. Please login again.");
+    }
+
     if (!response.ok) {
       const error = await response
         .json()
