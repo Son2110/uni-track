@@ -1,8 +1,11 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Web;
+using Microsoft.Extensions.Options;
 using PMSS.Application.Interfaces.Repositories;
 using PMSS.Application.Interfaces.Services;
+using PMSS.Infrastructure.Configuration;
+using PMSS.Infrastructure.Utilities;
 
 namespace PMSS.Infrastructure.Services;
 
@@ -15,13 +18,16 @@ public class JiraApiService : IJiraApiService
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IJiraConfigRepository _jiraConfigRepository;
+    private readonly string _encryptionKey;
 
     public JiraApiService(
         IHttpClientFactory httpClientFactory,
-        IJiraConfigRepository jiraConfigRepository)
+        IJiraConfigRepository jiraConfigRepository,
+        IOptions<JwtSettings> jwtSettings)
     {
         _httpClientFactory = httpClientFactory;
         _jiraConfigRepository = jiraConfigRepository;
+        _encryptionKey = jwtSettings.Value.SecretKey;
     }
 
     /// <inheritdoc />
@@ -48,18 +54,22 @@ public class JiraApiService : IJiraApiService
 
         var client = _httpClientFactory.CreateClient();
 
-        // Set up Basic Authentication using shared credentials from JiraConfig
-        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{jiraConfig.Email}:{jiraConfig.ApiToken}"));
+        // Decrypt the API token before use
+        var decryptedToken = AesEncryptionHelper.Decrypt(jiraConfig.ApiToken, _encryptionKey);
+
+        // Set up Basic Authentication (Email:ApiToken encoded in Base64)
+        var authToken = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{jiraConfig.Email}:{decryptedToken}"));
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
         // Build the Jira search endpoint URL
         var jql = $"project = {jiraConfig.ProjectKey} ORDER BY created DESC";
-        var fields = "summary,description,status";
-        
+        var fields = "summary,description,status,issuetype,priority,labels,components,assignee,created,updated,issuelinks,fixVersions,parent,comment";
+
         var searchUrl = $"{jiraConfig.JiraUrl.TrimEnd('/')}/rest/api/3/search/jql" +
                         $"?jql={HttpUtility.UrlEncode(jql)}" +
-                        $"&fields={fields}";
+                        $"&fields={fields}" +
+                        $"&maxResults=100";
 
         var response = await client.GetAsync(searchUrl);
 

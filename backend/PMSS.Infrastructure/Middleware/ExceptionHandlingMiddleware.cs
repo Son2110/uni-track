@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using PMSS.Application.DTOs.Common;
 using System.Net;
@@ -10,11 +11,13 @@ public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+    private readonly IHostEnvironment _env;
 
-    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger, IHostEnvironment env)
     {
         _next = next;
         _logger = logger;
+        _env = env;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -56,7 +59,7 @@ public class ExceptionHandlingMiddleware
 
         var response = ApiResponse<object>.ErrorResponse(
             "An error occurred processing your request",
-            exception.Message
+            _env.IsDevelopment() ? exception.Message : "Internal server error"
         );
 
         result = JsonSerializer.Serialize(response, new JsonSerializerOptions

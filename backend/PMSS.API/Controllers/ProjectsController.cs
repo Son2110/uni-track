@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.Application.DTOs.Project;
 using PMSS.Application.Interfaces.Services;
@@ -10,6 +12,7 @@ namespace PMSS.API.Controllers;
 [ApiController]
 [Route("api/v1/projects")]
 [Produces("application/json")]
+[Authorize]
 public class ProjectsController : ControllerBase
 {
     private readonly IProjectService _projectService;
@@ -116,6 +119,7 @@ public class ProjectsController : ControllerBase
     /// <response code="204">Project deleted successfully</response>
     /// <response code="404">If the project is not found</response>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,Teacher")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(Guid id)
