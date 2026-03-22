@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../features/admin/presentation/admin_hub_screen.dart';
 import '../features/auth/data/models/auth_models.dart';
 import '../features/classes/presentation/teacher_classes_screen.dart';
 import '../features/notifications/data/repositories/notification_repository.dart';
@@ -57,17 +56,11 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
     if (index != 1) _loadUnreadCount();
   }
 
-  bool get _canManage {
-    final role = widget.currentUser.role.toLowerCase();
-    return role == 'admin' || role == 'teacher';
-  }
-
   @override
   Widget build(BuildContext context) {
     final screens = [
       TeacherClassesScreen(currentUser: widget.currentUser),
       NotificationsScreen(currentUser: widget.currentUser),
-      if (_canManage) AdminHubScreen(currentUser: widget.currentUser),
       ProfileScreen(currentUser: widget.currentUser, onLogout: widget.onLogout),
     ];
 
@@ -96,12 +89,6 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
         ),
         label: 'Notifications',
       ),
-      if (_canManage)
-        const BottomNavigationBarItem(
-          icon: Icon(Icons.admin_panel_settings_outlined),
-          activeIcon: Icon(Icons.admin_panel_settings_rounded, size: 28),
-          label: 'Management',
-        ),
       const BottomNavigationBarItem(
         icon: Icon(Icons.person_rounded),
         activeIcon: Icon(Icons.person_rounded, size: 28),
