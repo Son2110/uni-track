@@ -32,6 +32,12 @@ public static class ServiceCollectionExtensions
         var jwtSettings = configuration.GetSection("JwtSettings");
         services.Configure<JwtSettings>(jwtSettings);
 
+        // Configure GitHub Models settings (free AI for SRS generation)
+        services.Configure<GitHubModelsSettings>(configuration.GetSection("GitHubModels"));
+
+        // Configure OpenAI settings (paid AI for comprehensive SRS generation)
+        services.Configure<OpenAISettings>(configuration.GetSection("OpenAI"));
+
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -86,6 +92,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IAccessRequestService, AccessRequestService>();
         services.AddScoped<IStudentActivityMonitorService, StudentActivityMonitorService>();
+        services.AddScoped<ISrsGenerationService, SrsGenerationService>();
+        services.AddScoped<IAiSrsGenerationService, AiSrsGenerationService>();
 
         // Register background service for automated GitHub data sync at midnight
         services.AddHostedService<GithubDataSyncBackgroundService>();

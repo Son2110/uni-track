@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # Ignore PMSS.Infrastructure Data Datasets folder
 /backend/PMSS.Infrastructure/Data/Datasets/
+/backend/PMSS.API/appsettings.json

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMSS.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using PMSS.Infrastructure.Data;
 namespace PMSS.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260307071040_IncreaseApiTokenMaxLength")]
+    partial class IncreaseApiTokenMaxLength
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -217,8 +220,8 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.Property<string>("ApiToken")
                         .IsRequired()
-                    .HasMaxLength(2048)
-                    .HasColumnType("nvarchar(2048)");
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -251,45 +254,6 @@ namespace PMSS.Infrastructure.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("JiraConfigs");
-                });
-
-            modelBuilder.Entity("PMSS.Domain.Entities.Notification", b =>
-                {
-                    b.Property<Guid>("NotificationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<bool>("IsRead")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
-
-                    b.Property<string>("Message")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<DateTime?>("ReadAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("NotificationId");
-
-                    b.HasIndex("UserId");
-
-                    b.HasIndex("UserId", "IsRead");
-
-                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.Project", b =>
@@ -649,17 +613,6 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.Navigation("Project");
                 });
 
-            modelBuilder.Entity("PMSS.Domain.Entities.Notification", b =>
-                {
-                    b.HasOne("PMSS.Domain.Entities.User", "User")
-                        .WithMany("Notifications")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("PMSS.Domain.Entities.Project", b =>
                 {
                     b.HasOne("PMSS.Domain.Entities.Class", "Class")
@@ -777,8 +730,6 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.Navigation("AccessRequests");
 
                     b.Navigation("ClassEnrollments");
-
-                    b.Navigation("Notifications");
 
                     b.Navigation("ProjectMembers");
 
