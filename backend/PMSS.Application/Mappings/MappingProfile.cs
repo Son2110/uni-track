@@ -5,6 +5,7 @@ using PMSS.Application.DTOs.ClassEnrollment;
 using PMSS.Application.DTOs.Course;
 using PMSS.Application.DTOs.GithubRepo;
 using PMSS.Application.DTOs.JiraConfig;
+using PMSS.Application.DTOs.Notification;
 using PMSS.Application.DTOs.Project;
 using PMSS.Application.DTOs.ProjectMember;
 using PMSS.Application.DTOs.Semester;
@@ -155,6 +156,16 @@ public class MappingProfile : Profile
             .ForMember(dest => dest.ResolvedAt, opt => opt.Ignore())
             .ForMember(dest => dest.Requester, opt => opt.Ignore())
             .ForMember(dest => dest.Project, opt => opt.Ignore());
+
+        // Notification mappings
+        CreateMap<Notification, NotificationDto>()
+            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User != null ? src.User.Name : string.Empty));
+        CreateMap<CreateNotificationDto, Notification>()
+            .ForMember(dest => dest.NotificationId, opt => opt.Ignore())
+            .ForMember(dest => dest.IsRead, opt => opt.Ignore())
+            .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+            .ForMember(dest => dest.ReadAt, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore());
 
         // GithubRepo contribution mappings
         CreateMap<GithubRepo, RepoContributionDto>()

@@ -25,6 +25,8 @@ public class CreateClassDto
 
 public class UpdateClassDto
 {
+    public Guid SemesterId { get; set; }
+    public Guid CourseId { get; set; }
     public string ClassCode { get; set; } = string.Empty;
     public Guid TeacherId { get; set; }
 }

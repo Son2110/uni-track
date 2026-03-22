@@ -233,8 +233,26 @@ public class ClassService : IClassService
                 return ApiResponse<ClassDto>.ErrorResponse("Teacher not found");
             }
 
+            // Validate semester exists
+            var semester = await _unitOfWork.Semesters.GetByIdAsync(dto.SemesterId);
+            if (semester == null)
+            {
+                _logger.LogWarning("Semester not found: {SemesterId}", dto.SemesterId);
+                return ApiResponse<ClassDto>.ErrorResponse("Semester not found");
+            }
+
+            // Validate course exists
+            var course = await _unitOfWork.Courses.GetByIdAsync(dto.CourseId);
+            if (course == null)
+            {
+                _logger.LogWarning("Course not found: {CourseId}", dto.CourseId);
+                return ApiResponse<ClassDto>.ErrorResponse("Course not found");
+            }
+
             classEntity.ClassCode = dto.ClassCode;
             classEntity.TeacherId = dto.TeacherId;
+            classEntity.SemesterId = dto.SemesterId;
+            classEntity.CourseId = dto.CourseId;
             classEntity.UpdatedAt = DateTime.Now;
 
             _unitOfWork.Classes.Update(classEntity);

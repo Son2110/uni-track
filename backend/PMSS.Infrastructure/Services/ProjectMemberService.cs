@@ -13,12 +13,14 @@ public class ProjectMemberService : IProjectMemberService
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ProjectMemberService> _logger;
     private readonly IMapper _mapper;
+    private readonly INotificationService _notificationService;
 
-    public ProjectMemberService(IUnitOfWork unitOfWork, ILogger<ProjectMemberService> logger, IMapper mapper)
+    public ProjectMemberService(IUnitOfWork unitOfWork, ILogger<ProjectMemberService> logger, IMapper mapper, INotificationService notificationService)
     {
         _unitOfWork = unitOfWork;
         _logger = logger;
         _mapper = mapper;
+        _notificationService = notificationService;
     }
 
     public async Task<ApiResponse<PagedResult<ProjectMemberDto>>> GetAllMembersAsync(ProjectMemberFilterParams filterParams)
@@ -139,9 +141,12 @@ public class ProjectMemberService : IProjectMemberService
             await _unitOfWork.ProjectMembers.AddAsync(projectMember);
             await _unitOfWork.SaveChangesAsync();
 
+            // Send notification to the added member
+            await _notificationService.NotifyProjectMemberAddedAsync(dto.UserId, project.Name);
+
             // Retrieve the full membership data
             var membership = await _unitOfWork.ProjectMembers.GetMembershipAsync(dto.ProjectId, dto.UserId);
-            
+
             _logger.LogInformation("Member added successfully: ProjectId={ProjectId}, UserId={UserId}", dto.ProjectId, dto.UserId);
             return ApiResponse<ProjectMemberDto>.SuccessResponse(_mapper.Map<ProjectMemberDto>(membership!), "Member added successfully");
         }

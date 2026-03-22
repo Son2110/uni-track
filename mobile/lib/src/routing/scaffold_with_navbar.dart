@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import '../features/home/presentation/home_screen.dart';
-import '../features/workspace/presentation/workspace_screen.dart';
+import '../features/admin/presentation/admin_hub_screen.dart';
+import '../features/auth/data/models/auth_models.dart';
+import '../features/classes/presentation/teacher_classes_screen.dart';
+import '../features/notifications/data/repositories/notification_repository.dart';
+import '../features/notifications/presentation/notifications_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 
 /// Main app shell with persistent bottom navigation bar
 class ScaffoldWithNavBar extends StatefulWidget {
-  const ScaffoldWithNavBar({super.key});
+  final AuthUser currentUser;
+  final VoidCallback onLogout;
+
+  const ScaffoldWithNavBar({
+    super.key,
+    required this.currentUser,
+    required this.onLogout,
+  });
 
   @override
   State<ScaffoldWithNavBar> createState() => _ScaffoldWithNavBarState();
@@ -14,30 +24,99 @@ class ScaffoldWithNavBar extends StatefulWidget {
 
 class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
   int _selectedIndex = 0;
+  final _notificationRepository = NotificationRepository();
+  int _unreadCount = 0;
 
-  // Define the screens for each tab
-  static const List<Widget> _screens = [
-    HomeScreen(),
-    WorkspaceScreen(),
-    ProfileScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final notifications = await _notificationRepository.getMyNotifications(
+        userId: widget.currentUser.userId,
+        token: widget.currentUser.token,
+      );
+      if (mounted) {
+        setState(() {
+          _unreadCount = notifications.where((n) => !n.isRead).length;
+        });
+      }
+    } catch (_) {
+      // badge is non-critical, silently ignore errors
+    }
+  }
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+    // Refresh unread count when switching away from notifications tab
+    if (index != 1) _loadUnreadCount();
+  }
+
+  bool get _canManage {
+    final role = widget.currentUser.role.toLowerCase();
+    return role == 'admin' || role == 'teacher';
   }
 
   @override
   Widget build(BuildContext context) {
+    final screens = [
+      TeacherClassesScreen(currentUser: widget.currentUser),
+      NotificationsScreen(currentUser: widget.currentUser),
+      if (_canManage) AdminHubScreen(currentUser: widget.currentUser),
+      ProfileScreen(currentUser: widget.currentUser, onLogout: widget.onLogout),
+    ];
+
+    final navItems = [
+      BottomNavigationBarItem(
+        icon: Icon(Icons.class_outlined),
+        activeIcon: Icon(Icons.class_rounded, size: 28),
+        label: 'My Classes',
+      ),
+      BottomNavigationBarItem(
+        icon: Badge(
+          isLabelVisible: _unreadCount > 0,
+          label: Text(
+            _unreadCount > 99 ? '99+' : '$_unreadCount',
+            style: const TextStyle(fontSize: 10),
+          ),
+          child: const Icon(Icons.notifications_outlined),
+        ),
+        activeIcon: Badge(
+          isLabelVisible: _unreadCount > 0,
+          label: Text(
+            _unreadCount > 99 ? '99+' : '$_unreadCount',
+            style: const TextStyle(fontSize: 10),
+          ),
+          child: const Icon(Icons.notifications_rounded, size: 28),
+        ),
+        label: 'Notifications',
+      ),
+      if (_canManage)
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.admin_panel_settings_outlined),
+          activeIcon: Icon(Icons.admin_panel_settings_rounded, size: 28),
+          label: 'Management',
+        ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.person_rounded),
+        activeIcon: Icon(Icons.person_rounded, size: 28),
+        label: 'Profile',
+      ),
+    ];
+
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: screens[_selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.navBackground,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),
@@ -54,23 +133,7 @@ class _ScaffoldWithNavBarState extends State<ScaffoldWithNavBar> {
           type: BottomNavigationBarType.fixed,
           elevation: 0,
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              activeIcon: Icon(Icons.home_rounded, size: 28),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.work_rounded),
-              activeIcon: Icon(Icons.work_rounded, size: 28),
-              label: 'Workspace',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              activeIcon: Icon(Icons.person_rounded, size: 28),
-              label: 'Profile',
-            ),
-          ],
+          items: navItems,
         ),
       ),
     );

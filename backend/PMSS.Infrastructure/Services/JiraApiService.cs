@@ -20,6 +20,11 @@ public class JiraApiService : IJiraApiService
     private readonly IJiraConfigRepository _jiraConfigRepository;
     private readonly string _encryptionKey;
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     public JiraApiService(
         IHttpClientFactory httpClientFactory,
         IJiraConfigRepository jiraConfigRepository,
@@ -64,22 +69,46 @@ public class JiraApiService : IJiraApiService
 
         // Build the Jira search endpoint URL
         var jql = $"project = {jiraConfig.ProjectKey} ORDER BY created DESC";
-        var fields = "summary,description,status,issuetype,priority,labels,components,assignee,created,updated,issuelinks,fixVersions,parent,comment";
+        var fields = "summary,description,status,issuetype,priority,labels,components,assignee,created,updated,issuelinks,fixVersions,parent,comment,resolution,subtasks,environment";
 
-        var searchUrl = $"{jiraConfig.JiraUrl.TrimEnd('/')}/rest/api/3/search/jql" +
-                        $"?jql={HttpUtility.UrlEncode(jql)}" +
-                        $"&fields={fields}" +
-                        $"&maxResults=100";
+        var baseUrl = $"{jiraConfig.JiraUrl.TrimEnd('/')}/rest/api/3/search/jql";
+        var allIssues = new List<JsonElement>();
+        int startAt = 0;
+        int total;
 
-        var response = await client.GetAsync(searchUrl);
-
-        if (!response.IsSuccessStatusCode)
+        // Paginate through all Jira issues to ensure nothing is missed
+        do
         {
-            var errorContent = await response.Content.ReadAsStringAsync();
-            throw new HttpRequestException($"Jira API request failed with status {response.StatusCode}: {errorContent}");
-        }
+            var searchUrl = $"{baseUrl}" +
+                            $"?jql={HttpUtility.UrlEncode(jql)}" +
+                            $"&fields={fields}" +
+                            $"&startAt={startAt}" +
+                            $"&maxResults=100";
 
-        var rawJsonResponse = await response.Content.ReadAsStringAsync();
-        return rawJsonResponse;
+            var response = await client.GetAsync(searchUrl);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Jira API request failed with status {response.StatusCode}: {errorContent}");
+            }
+
+            var rawPage = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(rawPage);
+            var root = doc.RootElement;
+
+            total = root.TryGetProperty("total", out var totalEl) ? totalEl.GetInt32() : 0;
+
+            if (root.TryGetProperty("issues", out var issuesArray) && issuesArray.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var issue in issuesArray.EnumerateArray())
+                    allIssues.Add(issue.Clone());
+            }
+
+            startAt += 100;
+        } while (startAt < total);
+
+        // Return a combined JSON with all issues
+        return JsonSerializer.Serialize(new { issues = allIssues, total = allIssues.Count }, JsonOptions);
     }
 }

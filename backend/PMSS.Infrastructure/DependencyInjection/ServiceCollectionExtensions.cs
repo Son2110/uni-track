@@ -35,6 +35,9 @@ public static class ServiceCollectionExtensions
         // Configure GitHub Models settings (free AI for SRS generation)
         services.Configure<GitHubModelsSettings>(configuration.GetSection("GitHubModels"));
 
+        // Configure OpenAI settings (paid AI for comprehensive SRS generation)
+        services.Configure<OpenAISettings>(configuration.GetSection("OpenAI"));
+
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -68,7 +71,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
         services.AddScoped<IWeeklyContributionRepository, WeeklyContributionRepository>();
         services.AddScoped<IUserWeeklyContributionRepository, UserWeeklyContributionRepository>();
-        
+        services.AddScoped<INotificationRepository, NotificationRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddHttpClient();
@@ -86,11 +89,17 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IGithubRepoService, GithubRepoService>();
         services.AddScoped<IGithubDataSyncService, GithubDataSyncService>();
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IAccessRequestService, AccessRequestService>();
+        services.AddScoped<IStudentActivityMonitorService, StudentActivityMonitorService>();
         services.AddScoped<ISrsGenerationService, SrsGenerationService>();
         services.AddScoped<IAiSrsGenerationService, AiSrsGenerationService>();
 
         // Register background service for automated GitHub data sync at midnight
         services.AddHostedService<GithubDataSyncBackgroundService>();
+
+        // Register background service for weekly student activity monitoring
+        services.AddHostedService<StudentActivityMonitorBackgroundService>();
 
         return services;
     }
