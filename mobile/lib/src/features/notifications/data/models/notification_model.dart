@@ -17,17 +17,47 @@ class NotificationModel {
     this.readAt,
   });
 
+  static String _readString(
+    Map<String, dynamic> json,
+    List<String> keys, {
+    String fallback = '',
+  }) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+      final text = value.toString().trim();
+      if (text.isNotEmpty) return text;
+    }
+    return fallback;
+  }
+
+  static DateTime _parseDate(dynamic value, {DateTime? fallback}) {
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value) ?? fallback ?? DateTime.now();
+    }
+    return fallback ?? DateTime.now();
+  }
+
   factory NotificationModel.fromGraphQL(Map<String, dynamic> json) =>
       NotificationModel(
-        notificationId: json['notificationId'].toString(),
-        userId: json['userId'].toString(),
-        title: json['title'] as String,
-        message: json['message'] as String,
-        isRead: json['isRead'] as bool,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        readAt: json['readAt'] != null
-            ? DateTime.parse(json['readAt'] as String)
-            : null,
+        notificationId: _readString(json, const [
+          'notificationId',
+          'id',
+        ], fallback: 'unknown'),
+        userId: _readString(json, const ['userId'], fallback: 'unknown'),
+        title: _readString(json, const [
+          'title',
+          'subject',
+        ], fallback: 'Notification'),
+        message: _readString(json, const [
+          'message',
+          'content',
+          'body',
+          'description',
+        ], fallback: 'No message content.'),
+        isRead: json['isRead'] as bool? ?? false,
+        createdAt: _parseDate(json['createdAt']),
+        readAt: json['readAt'] != null ? _parseDate(json['readAt']) : null,
       );
 
   NotificationModel copyWith({bool? isRead, DateTime? readAt}) =>

@@ -416,23 +416,27 @@ class _RepoCard extends StatelessWidget {
           const Divider(height: 1),
           const SizedBox(height: 10),
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _MiniStat(
                 label: 'Commits',
                 value: '${repo.totalCommits}',
                 color: AppColors.secondary,
+                centerAligned: true,
               ),
               const SizedBox(width: 16),
               _MiniStat(
                 label: 'Additions',
                 value: '+${repo.totalAdditions}',
                 color: AppColors.success,
+                centerAligned: true,
               ),
               const SizedBox(width: 16),
               _MiniStat(
                 label: 'Deletions',
                 value: '-${repo.totalDeletions}',
                 color: AppColors.error,
+                centerAligned: true,
               ),
             ],
           ),
@@ -626,20 +630,25 @@ class _MiniStat extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final bool centerAligned;
 
   const _MiniStat({
     required this.label,
     required this.value,
     required this.color,
+    this.centerAligned = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: centerAligned
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         Text(
           value,
+          textAlign: centerAligned ? TextAlign.center : TextAlign.start,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.bold,
@@ -648,6 +657,7 @@ class _MiniStat extends StatelessWidget {
         ),
         Text(
           label,
+          textAlign: centerAligned ? TextAlign.center : TextAlign.start,
           style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
       ],
@@ -688,23 +698,32 @@ class _WeeklyBarChart extends StatelessWidget {
     const labelH = 36.0;
     final totalW = weeks.length * (barWidth + barSpacing);
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        height: topPad + chartH + labelH,
-        width: math.max(totalW, 200),
-        child: CustomPaint(
-          painter: _BarChartPainter(
-            weeks: weeks,
-            maxVal: maxVal,
-            barWidth: barWidth,
-            barSpacing: barSpacing,
-            chartH: chartH,
-            topPad: topPad,
-            barColor: barColor,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: Center(
+              child: SizedBox(
+                height: topPad + chartH + labelH,
+                width: math.max(totalW, 200),
+                child: CustomPaint(
+                  painter: _BarChartPainter(
+                    weeks: weeks,
+                    maxVal: maxVal,
+                    barWidth: barWidth,
+                    barSpacing: barSpacing,
+                    chartH: chartH,
+                    topPad: topPad,
+                    barColor: barColor,
+                  ),
+                ),
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
