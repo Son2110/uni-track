@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
+import '../../admin/data/models/semester_model.dart';
+import '../../admin/data/services/semester_graphql_service.dart';
 import '../../auth/data/models/auth_models.dart';
 import '../../projects/presentation/class_projects_screen.dart';
 import '../data/models/class_model.dart';
@@ -16,14 +18,15 @@ class TeacherClassesScreen extends StatefulWidget {
 
 class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
   final _classGraphQLService = ClassGraphQLService();
+  final _semesterGraphQLService = SemesterGraphQLService();
   final _searchController = TextEditingController();
 
-  static const _semesterFilterCurrent = '__current__';
   static const _semesterFilterAll = '__all__';
 
   late Future<List<ClassModel>> _classesFuture;
+  late Future<List<SemesterModel>> _semestersFuture;
   String _searchQuery = '';
-  String _selectedSemesterFilter = _semesterFilterCurrent;
+  String? _selectedSemesterFilter;
   _ClassSortOption _selectedSort = _ClassSortOption.classCodeAsc;
 
   @override
@@ -37,6 +40,19 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
       teacherId: widget.currentUser.userId,
       token: widget.currentUser.token,
     );
+
+    _semestersFuture = _semesterGraphQLService.getAllSemesters(
+      token: widget.currentUser.token,
+    );
+
+    _semestersFuture.then((semesters) {
+      if (!mounted || _selectedSemesterFilter != null) return;
+
+      final currentSemesterId = _resolveCurrentSemesterId(semesters);
+      if (currentSemesterId == null) return;
+
+      setState(() => _selectedSemesterFilter = currentSemesterId);
+    });
   }
 
   @override
@@ -47,78 +63,39 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
 
   Future<void> _refresh() async {
     setState(() => _loadClasses());
-    await _classesFuture;
+    await Future.wait<void>([_classesFuture, _semestersFuture]);
   }
 
-  List<_SemesterFilterOption> _buildSemesterOptions(List<ClassModel> classes) {
-    final bySemester = <String, _SemesterFilterOption>{};
-
-    for (final cls in classes) {
-      bySemester.putIfAbsent(
-        cls.semesterId,
-        () => _SemesterFilterOption(
-          value: cls.semesterId,
-          label: cls.semesterName,
-          startDate: cls.semesterStartDate,
-          endDate: cls.semesterEndDate,
-        ),
-      );
-    }
-
-    final options = bySemester.values.toList()
-      ..sort((a, b) {
-        final aStart = a.startDate;
-        final bStart = b.startDate;
-
-        if (aStart != null && bStart != null) {
-          return bStart.compareTo(aStart);
-        }
-        if (aStart != null) return -1;
-        if (bStart != null) return 1;
-        return a.label.toLowerCase().compareTo(b.label.toLowerCase());
-      });
+  List<_SemesterFilterOption> _buildSemesterOptions(
+    List<SemesterModel> semesters,
+  ) {
+    final options =
+        semesters
+            .map(
+              (semester) => _SemesterFilterOption(
+                value: semester.semesterId,
+                label: semester.name,
+                sortDate: semester.startDate,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.sortDate.compareTo(a.sortDate));
 
     return [
-      const _SemesterFilterOption(
-        value: _semesterFilterCurrent,
-        label: 'Current semester',
-      ),
-      const _SemesterFilterOption(
+      _SemesterFilterOption(
         value: _semesterFilterAll,
         label: 'All semesters',
+        sortDate: DateTime.fromMillisecondsSinceEpoch(0),
       ),
       ...options,
     ];
   }
 
-  String? _resolveCurrentSemesterId(List<ClassModel> classes) {
+  String? _resolveCurrentSemesterId(List<SemesterModel> semesters) {
     final now = DateTime.now();
-    final bySemester = <String, _SemesterRange>{};
-
-    for (final cls in classes) {
-      final start = cls.semesterStartDate;
-      final end = cls.semesterEndDate;
-      if (start == null || end == null) continue;
-
-      final existing = bySemester[cls.semesterId];
-      if (existing == null) {
-        bySemester[cls.semesterId] = _SemesterRange(
-          semesterId: cls.semesterId,
-          startDate: start,
-          endDate: end,
-        );
-      } else {
-        if (start.isBefore(existing.startDate)) {
-          existing.startDate = start;
-        }
-        if (end.isAfter(existing.endDate)) {
-          existing.endDate = end;
-        }
-      }
-    }
 
     final activeSemesters =
-        bySemester.values.where((semester) {
+        semesters.where((semester) {
           final starts = !now.isBefore(semester.startDate);
           final ends = !now.isAfter(semester.endDate);
           return starts && ends;
@@ -138,14 +115,7 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
   ) {
     var result = List<ClassModel>.from(allClasses);
 
-    if (effectiveSemesterFilter == _semesterFilterCurrent) {
-      final currentSemesterId = _resolveCurrentSemesterId(result);
-      if (currentSemesterId != null) {
-        result = result
-            .where((cls) => cls.semesterId == currentSemesterId)
-            .toList();
-      }
-    } else if (effectiveSemesterFilter != _semesterFilterAll) {
+    if (effectiveSemesterFilter != _semesterFilterAll) {
       result = result
           .where((cls) => cls.semesterId == effectiveSemesterFilter)
           .toList();
@@ -183,7 +153,7 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
     setState(() {
       _searchController.clear();
       _searchQuery = '';
-      _selectedSemesterFilter = _semesterFilterCurrent;
+      _selectedSemesterFilter = null;
       _selectedSort = _ClassSortOption.classCodeAsc;
     });
   }
@@ -281,73 +251,100 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
             );
           }
 
-          final semesterOptions = _buildSemesterOptions(allClasses);
-          final hasSelectedSemester = semesterOptions.any(
-            (option) => option.value == _selectedSemesterFilter,
-          );
-          final effectiveSemesterFilter = hasSelectedSemester
-              ? _selectedSemesterFilter
-              : _semesterFilterCurrent;
+          return FutureBuilder<List<SemesterModel>>(
+            future: _semestersFuture,
+            builder: (context, semesterSnapshot) {
+              if (semesterSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(
+                  child: CircularProgressIndicator(color: AppColors.secondary),
+                );
+              }
 
-          final visibleClasses = _applySearchSortAndFilter(
-            allClasses,
-            effectiveSemesterFilter,
-          );
+              final semesters = semesterSnapshot.data ?? [];
+              final semesterOptions = _buildSemesterOptions(semesters);
+              final currentSemesterId = _resolveCurrentSemesterId(semesters);
 
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            color: AppColors.secondary,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: visibleClasses.isEmpty ? 2 : visibleClasses.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 14),
-                    child: _ClassesFilterBar(
-                      searchController: _searchController,
-                      onSearchChanged: (value) =>
-                          setState(() => _searchQuery = value),
-                      semesterOptions: semesterOptions,
-                      selectedSemesterFilter: effectiveSemesterFilter,
-                      onSemesterChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedSemesterFilter = value);
-                      },
-                      selectedSort: _selectedSort,
-                      onSortChanged: (value) {
-                        if (value == null) return;
-                        setState(() => _selectedSort = value);
-                      },
-                      resultCount: visibleClasses.length,
-                      totalCount: allClasses.length,
-                      onClearFilters: _clearFilters,
-                    ),
+              final hasSelectedSemester =
+                  _selectedSemesterFilter != null &&
+                  semesterOptions.any(
+                    (option) => option.value == _selectedSemesterFilter,
                   );
-                }
+              final effectiveSemesterFilter = hasSelectedSemester
+                  ? _selectedSemesterFilter!
+                  : currentSemesterId ?? _semesterFilterAll;
 
-                if (visibleClasses.isEmpty) {
-                  return _NoClassMatchView(onClearFilters: _clearFilters);
-                }
+              if (!hasSelectedSemester &&
+                  currentSemesterId != null &&
+                  _selectedSemesterFilter == null) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted || _selectedSemesterFilter != null) return;
+                  setState(() => _selectedSemesterFilter = currentSemesterId);
+                });
+              }
 
-                final cls = visibleClasses[index - 1];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _ClassCard(
-                    cls: cls,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ClassProjectsScreen(
-                          cls: cls,
-                          token: widget.currentUser.token,
+              final visibleClasses = _applySearchSortAndFilter(
+                allClasses,
+                effectiveSemesterFilter,
+              );
+
+              return RefreshIndicator(
+                onRefresh: _refresh,
+                color: AppColors.secondary,
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: visibleClasses.isEmpty
+                      ? 2
+                      : visibleClasses.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == 0) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _ClassesFilterBar(
+                          searchController: _searchController,
+                          onSearchChanged: (value) =>
+                              setState(() => _searchQuery = value),
+                          semesterOptions: semesterOptions,
+                          selectedSemesterFilter: effectiveSemesterFilter,
+                          onSemesterChanged: (value) {
+                            if (value == null) return;
+                            setState(() => _selectedSemesterFilter = value);
+                          },
+                          selectedSort: _selectedSort,
+                          onSortChanged: (value) {
+                            if (value == null) return;
+                            setState(() => _selectedSort = value);
+                          },
+                          resultCount: visibleClasses.length,
+                          totalCount: allClasses.length,
+                          onClearFilters: _clearFilters,
+                        ),
+                      );
+                    }
+
+                    if (visibleClasses.isEmpty) {
+                      return _NoClassMatchView(onClearFilters: _clearFilters);
+                    }
+
+                    final cls = visibleClasses[index - 1];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: _ClassCard(
+                        cls: cls,
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ClassProjectsScreen(
+                              cls: cls,
+                              token: widget.currentUser.token,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
+              );
+            },
           );
         },
       ),
@@ -424,6 +421,7 @@ class _ClassesFilterBar extends StatelessWidget {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
+                  key: ValueKey<String>(selectedSemesterFilter),
                   initialValue: selectedSemesterFilter,
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -564,26 +562,12 @@ class _NoClassMatchView extends StatelessWidget {
 class _SemesterFilterOption {
   final String value;
   final String label;
-  final DateTime? startDate;
-  final DateTime? endDate;
+  final DateTime sortDate;
 
   const _SemesterFilterOption({
     required this.value,
     required this.label,
-    this.startDate,
-    this.endDate,
-  });
-}
-
-class _SemesterRange {
-  final String semesterId;
-  DateTime startDate;
-  DateTime endDate;
-
-  _SemesterRange({
-    required this.semesterId,
-    required this.startDate,
-    required this.endDate,
+    required this.sortDate,
   });
 }
 
