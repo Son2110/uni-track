@@ -30,15 +30,16 @@ public class ProjectsController : ControllerBase
     /// <response code="200">Returns the list of projects</response>
     /// <response code="400">If the filter parameters are invalid</response>
     [HttpGet]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> GetAll([FromQuery] ProjectFilterParams filterParams)
     {
         var result = await _projectService.GetAllProjectsAsync(filterParams);
-        
+
         if (!result.Success)
             return BadRequest(result);
-        
+
         return Ok(result);
     }
 
@@ -50,15 +51,16 @@ public class ProjectsController : ControllerBase
     /// <response code="200">Returns the project</response>
     /// <response code="404">If the project is not found</response>
     [HttpGet("{id:guid}")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _projectService.GetProjectByIdAsync(id);
-        
+
         if (!result.Success)
             return NotFound(result);
-        
+
         return Ok(result);
     }
 
@@ -78,10 +80,10 @@ public class ProjectsController : ControllerBase
             return BadRequest(ModelState);
 
         var result = await _projectService.CreateProjectAsync(dto);
-        
+
         if (!result.Success)
             return BadRequest(result);
-        
+
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.ProjectId }, result);
     }
 
@@ -104,10 +106,10 @@ public class ProjectsController : ControllerBase
             return BadRequest(ModelState);
 
         var result = await _projectService.UpdateProjectAsync(id, dto);
-        
+
         if (!result.Success)
             return BadRequest(result);
-        
+
         return Ok(result);
     }
 
@@ -125,10 +127,10 @@ public class ProjectsController : ControllerBase
     public async Task<IActionResult> Delete(Guid id)
     {
         var result = await _projectService.DeleteProjectAsync(id);
-        
+
         if (!result.Success)
             return NotFound(result);
-        
+
         return NoContent();
     }
 
@@ -140,15 +142,16 @@ public class ProjectsController : ControllerBase
     /// <response code="200">Returns the GitHub contributions</response>
     /// <response code="404">If the project is not found or has no contributions</response>
     [HttpGet("{id:guid}/github-contributions")]
+    [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetGithubContributions(Guid id)
     {
         var result = await _projectService.GetProjectGithubContributionsAsync(id);
-        
+
         if (!result.Success)
             return NotFound(result);
-        
+
         return Ok(result);
     }
 }

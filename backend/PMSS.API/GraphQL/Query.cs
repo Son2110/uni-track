@@ -119,4 +119,14 @@ public class Query
     [UseSorting]
     public IQueryable<AccessRequest> GetAccessRequests([Service] IAccessRequestRepository repository)
         => repository.GetAllQueryable();
+
+    /// <summary>
+    /// Get all notifications with filtering, sorting, and pagination support
+    /// </summary>
+    [UsePaging]
+    [UseProjection]
+    [UseFiltering]
+    [UseSorting]
+    public IQueryable<Notification> GetNotifications([Service] INotificationRepository repository)
+        => repository.GetAllQueryable();
 }

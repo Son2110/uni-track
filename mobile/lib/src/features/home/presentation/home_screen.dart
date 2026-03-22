@@ -32,7 +32,7 @@ class HomeScreen extends StatelessWidget {
             ),
             SizedBox(height: 8),
             Text(
-              'Welcome to UniTrack',
+              'Welcome to PMSS',
               style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
             ),
           ],
