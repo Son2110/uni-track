@@ -11,6 +11,16 @@ public class ProjectRepository : GenericRepository<Project>, IProjectRepository
     {
     }
 
+    public override async Task<Project?> GetByIdAsync(Guid id)
+    {
+        return await _dbSet
+            .Include(p => p.Class)
+                .ThenInclude(c => c.Course)
+            .Include(p => p.Class)
+                .ThenInclude(c => c.Semester)
+            .FirstOrDefaultAsync(p => p.ProjectId == id);
+    }
+
     public async Task<IEnumerable<Project>> GetProjectsByCourseIdAsync(Guid courseId)
     {
         return await _dbSet

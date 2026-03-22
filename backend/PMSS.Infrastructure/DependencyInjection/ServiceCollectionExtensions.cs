@@ -35,6 +35,9 @@ public static class ServiceCollectionExtensions
         // Configure GitHub Models settings (free AI for SRS generation)
         services.Configure<GitHubModelsSettings>(configuration.GetSection("GitHubModels"));
 
+        // Configure OpenAI settings (paid AI for comprehensive SRS generation)
+        services.Configure<OpenAISettings>(configuration.GetSection("OpenAI"));
+
         services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
