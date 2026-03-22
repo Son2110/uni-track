@@ -16,8 +16,15 @@ class TeacherClassesScreen extends StatefulWidget {
 
 class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
   final _classGraphQLService = ClassGraphQLService();
+  final _searchController = TextEditingController();
+
+  static const _semesterFilterCurrent = '__current__';
+  static const _semesterFilterAll = '__all__';
 
   late Future<List<ClassModel>> _classesFuture;
+  String _searchQuery = '';
+  String _selectedSemesterFilter = _semesterFilterCurrent;
+  _ClassSortOption _selectedSort = _ClassSortOption.classCodeAsc;
 
   @override
   void initState() {
@@ -32,9 +39,153 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
     );
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _refresh() async {
     setState(() => _loadClasses());
     await _classesFuture;
+  }
+
+  List<_SemesterFilterOption> _buildSemesterOptions(List<ClassModel> classes) {
+    final bySemester = <String, _SemesterFilterOption>{};
+
+    for (final cls in classes) {
+      bySemester.putIfAbsent(
+        cls.semesterId,
+        () => _SemesterFilterOption(
+          value: cls.semesterId,
+          label: cls.semesterName,
+          startDate: cls.semesterStartDate,
+          endDate: cls.semesterEndDate,
+        ),
+      );
+    }
+
+    final options = bySemester.values.toList()
+      ..sort((a, b) {
+        final aStart = a.startDate;
+        final bStart = b.startDate;
+
+        if (aStart != null && bStart != null) {
+          return bStart.compareTo(aStart);
+        }
+        if (aStart != null) return -1;
+        if (bStart != null) return 1;
+        return a.label.toLowerCase().compareTo(b.label.toLowerCase());
+      });
+
+    return [
+      const _SemesterFilterOption(
+        value: _semesterFilterCurrent,
+        label: 'Current semester',
+      ),
+      const _SemesterFilterOption(
+        value: _semesterFilterAll,
+        label: 'All semesters',
+      ),
+      ...options,
+    ];
+  }
+
+  String? _resolveCurrentSemesterId(List<ClassModel> classes) {
+    final now = DateTime.now();
+    final bySemester = <String, _SemesterRange>{};
+
+    for (final cls in classes) {
+      final start = cls.semesterStartDate;
+      final end = cls.semesterEndDate;
+      if (start == null || end == null) continue;
+
+      final existing = bySemester[cls.semesterId];
+      if (existing == null) {
+        bySemester[cls.semesterId] = _SemesterRange(
+          semesterId: cls.semesterId,
+          startDate: start,
+          endDate: end,
+        );
+      } else {
+        if (start.isBefore(existing.startDate)) {
+          existing.startDate = start;
+        }
+        if (end.isAfter(existing.endDate)) {
+          existing.endDate = end;
+        }
+      }
+    }
+
+    final activeSemesters =
+        bySemester.values.where((semester) {
+          final starts = !now.isBefore(semester.startDate);
+          final ends = !now.isAfter(semester.endDate);
+          return starts && ends;
+        }).toList()..sort((a, b) {
+          final byEnd = b.endDate.compareTo(a.endDate);
+          if (byEnd != 0) return byEnd;
+          return b.startDate.compareTo(a.startDate);
+        });
+
+    if (activeSemesters.isEmpty) return null;
+    return activeSemesters.first.semesterId;
+  }
+
+  List<ClassModel> _applySearchSortAndFilter(
+    List<ClassModel> allClasses,
+    String effectiveSemesterFilter,
+  ) {
+    var result = List<ClassModel>.from(allClasses);
+
+    if (effectiveSemesterFilter == _semesterFilterCurrent) {
+      final currentSemesterId = _resolveCurrentSemesterId(result);
+      if (currentSemesterId != null) {
+        result = result
+            .where((cls) => cls.semesterId == currentSemesterId)
+            .toList();
+      }
+    } else if (effectiveSemesterFilter != _semesterFilterAll) {
+      result = result
+          .where((cls) => cls.semesterId == effectiveSemesterFilter)
+          .toList();
+    }
+
+    final query = _searchQuery.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      result = result.where((cls) {
+        return cls.classCode.toLowerCase().contains(query) ||
+            cls.courseCode.toLowerCase().contains(query) ||
+            cls.courseName.toLowerCase().contains(query) ||
+            cls.semesterName.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    result.sort((a, b) {
+      switch (_selectedSort) {
+        case _ClassSortOption.classCodeAsc:
+          return a.classCode.toLowerCase().compareTo(b.classCode.toLowerCase());
+        case _ClassSortOption.classCodeDesc:
+          return b.classCode.toLowerCase().compareTo(a.classCode.toLowerCase());
+        case _ClassSortOption.courseNameAsc:
+          return a.courseName.toLowerCase().compareTo(
+            b.courseName.toLowerCase(),
+          );
+        case _ClassSortOption.updatedNewest:
+          return b.updatedAt.compareTo(a.updatedAt);
+      }
+    });
+
+    return result;
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _searchController.clear();
+      _searchQuery = '';
+      _selectedSemesterFilter = _semesterFilterCurrent;
+      _selectedSort = _ClassSortOption.classCodeAsc;
+    });
   }
 
   @override
@@ -99,9 +250,9 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
             );
           }
 
-          final classes = snapshot.data ?? [];
+          final allClasses = snapshot.data ?? [];
 
-          if (classes.isEmpty) {
+          if (allClasses.isEmpty) {
             return Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -130,31 +281,310 @@ class _TeacherClassesScreenState extends State<TeacherClassesScreen> {
             );
           }
 
+          final semesterOptions = _buildSemesterOptions(allClasses);
+          final hasSelectedSemester = semesterOptions.any(
+            (option) => option.value == _selectedSemesterFilter,
+          );
+          final effectiveSemesterFilter = hasSelectedSemester
+              ? _selectedSemesterFilter
+              : _semesterFilterCurrent;
+
+          final visibleClasses = _applySearchSortAndFilter(
+            allClasses,
+            effectiveSemesterFilter,
+          );
+
           return RefreshIndicator(
             onRefresh: _refresh,
             color: AppColors.secondary,
-            child: ListView.separated(
+            child: ListView.builder(
               padding: const EdgeInsets.all(16),
-              itemCount: classes.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) => _ClassCard(
-                cls: classes[index],
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ClassProjectsScreen(
-                      cls: classes[index],
-                      token: widget.currentUser.token,
+              itemCount: visibleClasses.isEmpty ? 2 : visibleClasses.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 14),
+                    child: _ClassesFilterBar(
+                      searchController: _searchController,
+                      onSearchChanged: (value) =>
+                          setState(() => _searchQuery = value),
+                      semesterOptions: semesterOptions,
+                      selectedSemesterFilter: effectiveSemesterFilter,
+                      onSemesterChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedSemesterFilter = value);
+                      },
+                      selectedSort: _selectedSort,
+                      onSortChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _selectedSort = value);
+                      },
+                      resultCount: visibleClasses.length,
+                      totalCount: allClasses.length,
+                      onClearFilters: _clearFilters,
+                    ),
+                  );
+                }
+
+                if (visibleClasses.isEmpty) {
+                  return _NoClassMatchView(onClearFilters: _clearFilters);
+                }
+
+                final cls = visibleClasses[index - 1];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _ClassCard(
+                    cls: cls,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ClassProjectsScreen(
+                          cls: cls,
+                          token: widget.currentUser.token,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           );
         },
       ),
     );
   }
+}
+
+enum _ClassSortOption {
+  classCodeAsc,
+  classCodeDesc,
+  courseNameAsc,
+  updatedNewest,
+}
+
+class _ClassesFilterBar extends StatelessWidget {
+  final TextEditingController searchController;
+  final ValueChanged<String> onSearchChanged;
+  final List<_SemesterFilterOption> semesterOptions;
+  final String selectedSemesterFilter;
+  final ValueChanged<String?> onSemesterChanged;
+  final _ClassSortOption selectedSort;
+  final ValueChanged<_ClassSortOption?> onSortChanged;
+  final int resultCount;
+  final int totalCount;
+  final VoidCallback onClearFilters;
+
+  const _ClassesFilterBar({
+    required this.searchController,
+    required this.onSearchChanged,
+    required this.semesterOptions,
+    required this.selectedSemesterFilter,
+    required this.onSemesterChanged,
+    required this.selectedSort,
+    required this.onSortChanged,
+    required this.resultCount,
+    required this.totalCount,
+    required this.onClearFilters,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final showClear =
+        resultCount != totalCount || searchController.text.isNotEmpty;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.textDisabled.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: searchController,
+            onChanged: onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Search by class, course, or semester',
+              prefixIcon: const Icon(Icons.search_rounded),
+              isDense: true,
+              filled: true,
+              fillColor: AppColors.background,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: selectedSemesterFilter,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Semester',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  items: semesterOptions
+                      .map(
+                        (option) => DropdownMenuItem<String>(
+                          value: option.value,
+                          child: Text(
+                            option.label,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: onSemesterChanged,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: DropdownButtonFormField<_ClassSortOption>(
+                  initialValue: selectedSort,
+                  isExpanded: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Sort',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                      value: _ClassSortOption.classCodeAsc,
+                      child: Text('Class code A-Z'),
+                    ),
+                    DropdownMenuItem(
+                      value: _ClassSortOption.classCodeDesc,
+                      child: Text('Class code Z-A'),
+                    ),
+                    DropdownMenuItem(
+                      value: _ClassSortOption.courseNameAsc,
+                      child: Text('Course name A-Z'),
+                    ),
+                    DropdownMenuItem(
+                      value: _ClassSortOption.updatedNewest,
+                      child: Text('Recently updated'),
+                    ),
+                  ],
+                  onChanged: onSortChanged,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                '$resultCount of $totalCount classes',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const Spacer(),
+              if (showClear)
+                TextButton.icon(
+                  onPressed: onClearFilters,
+                  icon: const Icon(Icons.filter_alt_off_rounded, size: 18),
+                  label: const Text('Clear'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.secondary,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NoClassMatchView extends StatelessWidget {
+  final VoidCallback onClearFilters;
+
+  const _NoClassMatchView({required this.onClearFilters});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.textDisabled.withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.filter_alt_off_rounded,
+            size: 46,
+            color: AppColors.textDisabled,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'No classes match your filters',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Try another keyword or change semester and sort options.',
+            style: TextStyle(color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 14),
+          OutlinedButton.icon(
+            onPressed: onClearFilters,
+            icon: const Icon(Icons.restart_alt_rounded),
+            label: const Text('Reset filters'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SemesterFilterOption {
+  final String value;
+  final String label;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  const _SemesterFilterOption({
+    required this.value,
+    required this.label,
+    this.startDate,
+    this.endDate,
+  });
+}
+
+class _SemesterRange {
+  final String semesterId;
+  DateTime startDate;
+  DateTime endDate;
+
+  _SemesterRange({
+    required this.semesterId,
+    required this.startDate,
+    required this.endDate,
+  });
 }
 
 class _ClassCard extends StatelessWidget {

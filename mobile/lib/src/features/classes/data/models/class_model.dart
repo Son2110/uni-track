@@ -2,6 +2,8 @@ class ClassModel {
   final String classId;
   final String semesterId;
   final String semesterName;
+  final DateTime? semesterStartDate;
+  final DateTime? semesterEndDate;
   final String courseId;
   final String courseCode;
   final String courseName;
@@ -15,6 +17,8 @@ class ClassModel {
     required this.classId,
     required this.semesterId,
     required this.semesterName,
+    this.semesterStartDate,
+    this.semesterEndDate,
     required this.courseId,
     required this.courseCode,
     required this.courseName,
@@ -29,6 +33,8 @@ class ClassModel {
     classId: json['classId'].toString(),
     semesterId: json['semesterId'].toString(),
     semesterName: json['semesterName'] as String,
+    semesterStartDate: _tryParseDate(json['semesterStartDate']),
+    semesterEndDate: _tryParseDate(json['semesterEndDate']),
     courseId: json['courseId'].toString(),
     courseCode: json['courseCode'] as String,
     courseName: json['courseName'] as String,
@@ -47,6 +53,8 @@ class ClassModel {
       classId: json['classId'].toString(),
       semesterId: json['semesterId'].toString(),
       semesterName: semester['name'] as String,
+      semesterStartDate: _tryParseDate(semester['startDate']),
+      semesterEndDate: _tryParseDate(semester['endDate']),
       courseId: json['courseId'].toString(),
       courseCode: course['code'] as String,
       courseName: course['name'] as String,
@@ -56,5 +64,13 @@ class ClassModel {
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
+  }
+
+  static DateTime? _tryParseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is String && value.isNotEmpty) {
+      return DateTime.tryParse(value);
+    }
+    return null;
   }
 }
