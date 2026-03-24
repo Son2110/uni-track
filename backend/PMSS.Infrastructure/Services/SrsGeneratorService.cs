@@ -1,4 +1,5 @@
 using System.ClientModel;
+using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using OpenAI.Chat;
@@ -12,6 +13,11 @@ public class SrsGeneratorService : ISrsGeneratorService
     private readonly ILogger<SrsGeneratorService> _logger;
     private readonly string _modelId;
     private readonly string _storagePath;
+
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public SrsGeneratorService(IConfiguration configuration, ILogger<SrsGeneratorService> logger)
     {
@@ -41,7 +47,9 @@ public class SrsGeneratorService : ISrsGeneratorService
     {
         _logger.LogInformation("Generating SRS for project '{ProjectName}' using model '{ModelId}'", projectName, _modelId);
 
-        var prompt = BuildSrsPrompt(jiraIssuesJson, projectName);
+        // Parse Jira issues into structured objects for enhanced prompt context
+        var parsedIssues = ParseJiraIssues(jiraIssuesJson);
+        var prompt = BuildSrsPrompt(jiraIssuesJson, projectName, parsedIssues);
 
         try
         {
@@ -105,25 +113,51 @@ public class SrsGeneratorService : ISrsGeneratorService
             .ToArray()!;
     }
 
-    private static string BuildSrsPrompt(string jiraIssuesJson, string projectName)
+    private string BuildSrsPrompt(string jiraIssuesJson, string projectName, List<ParsedIssue> parsedIssues)
     {
+        var today = DateTime.UtcNow.ToString("MMMM dd, yyyy");
+
+        // Build issue classification summary from parsed data
+        var epics = parsedIssues.Where(i => i.IssueType.Equals("Epic", StringComparison.OrdinalIgnoreCase)).ToList();
+        var stories = parsedIssues.Where(i => i.IssueType.Equals("Story", StringComparison.OrdinalIgnoreCase)).ToList();
+        var tasks = parsedIssues.Where(i => i.IssueType.Equals("Task", StringComparison.OrdinalIgnoreCase)).ToList();
+        var bugs = parsedIssues.Where(i => i.IssueType.Equals("Bug", StringComparison.OrdinalIgnoreCase)).ToList();
+        var components = parsedIssues.SelectMany(i => i.Components).Distinct().ToList();
+        var assignees = parsedIssues.Where(i => !string.IsNullOrEmpty(i.Assignee)).Select(i => i.Assignee).Distinct().ToList();
+
+        var issueClassification = $"""
+            ## Issue Classification Summary
+            - **Total Issues:** {parsedIssues.Count}
+            - **Epics:** {epics.Count} | **Stories:** {stories.Count} | **Tasks:** {tasks.Count} | **Bugs:** {bugs.Count}
+            - **Components/Modules:** {string.Join(", ", components.Any() ? components : ["Not specified"])}
+            - **Team Members:** {string.Join(", ", assignees.Any() ? assignees : ["Not assigned"])}
+            - **Priority Levels:** {string.Join(", ", parsedIssues.Select(i => i.Priority).Distinct().Where(p => !string.IsNullOrEmpty(p)).DefaultIfEmpty("Not specified"))}
+            
+            """;
+
         return $"""
-            Analyze the Jira issues JSON data below and generate a complete Software Requirement Specification (SRS) document in Markdown format.
+            You are a senior Software Requirements Analyst with 15+ years of experience writing IEEE 830-compliant SRS documents.
 
-            ## Project Information
-            - **Project Name:** {projectName}
-            - **Date:** {DateTime.UtcNow:MMMM dd, yyyy}
+            ## YOUR TASK
+            Analyze the Jira issues JSON data provided at the end and generate a **complete, production-ready** Software Requirement Specification (SRS) document for the project "{projectName}".
 
-            ## Instructions
-            1. Analyze all Jira issues (summary, description, status) from the JSON data
-            2. Group related issues into functional modules/features
-            3. Generate a complete SRS following the EXACT template structure below
-            4. For each Jira issue, create a corresponding Use Case with the exact table format shown
-            5. Infer non-functional requirements from the issues where possible
-            6. Write in a professional, clear, and detailed manner
-            7. Output ONLY the Markdown content — no code fences, no preamble
+            ## ISSUE OVERVIEW
+            {issueClassification}
 
-            ## REQUIRED SRS Template (follow this EXACTLY)
+            ## CRITICAL RULES
+            - You MUST fill in ALL sections with **real, meaningful content** derived from the Jira issues — NEVER leave placeholders like [Description], [Name], or (Describe...).
+            - If a Jira issue lacks detail, **infer reasonable requirements** based on the issue summary and common software patterns.
+            - Every Use Case MUST have at least 5 detailed steps in the Main Success Scenario.
+            - Every Use Case MUST have at least 1 Alternative Scenario and 1 Exception with full descriptions.
+            - Preconditions and Post Conditions MUST have at least 2 items each.
+            - Non-functional requirements MUST be **specific and measurable** (e.g., "Response time < 2 seconds for 95% of requests" NOT just "fast response time").
+            - Business Rules MUST be concrete and numbered (BR-01, BR-02, etc.) with real descriptions.
+            - Write **extensive, detailed content** — a complete SRS should be at least 3000+ words.
+            - Output ONLY raw Markdown — no code fences, no ```markdown wrapper, no preamble text.
+
+            ## REQUIRED DOCUMENT STRUCTURE (follow EXACTLY)
+
+            ---
 
             # {projectName}
 
@@ -131,10 +165,10 @@ public class SrsGeneratorService : ISrsGeneratorService
 
             ---
 
-            **Class Code:** [Infer from project or use N/A]
-            **Group Code:** [Infer from project or use N/A]
+            **Class Code:** N/A
+            **Group Code:** N/A
 
-            **[Location], {DateTime.UtcNow:MMMM dd, yyyy}**
+            **{today}**
 
             ---
 
@@ -144,140 +178,253 @@ public class SrsGeneratorService : ISrsGeneratorService
 
             | Effective Date | Changed Items | A / M / D | Change Description | New Version |
             |----------------|----------------|-----------|--------------------|-------------|
-            | {DateTime.UtcNow:MMMM dd, yyyy} | Initial | A | Auto-generated from Jira issues | 1.0 |
+            | {today} | All Sections | A | Initial SRS auto-generated from Jira issues | 1.0 |
+
+            ---
+
+            # SIGNATURE PAGE
+
+            ## ORIGINATOR
+
+            | Name | Date | Role/Title |
+            |--------|--------|-------------|
+            | AI Generator | {today} | SRS Auto-Generator |
+
+            ## REVIEWERS
+
+            | Name | Date | Role |
+            |--------|--------|--------|
+            | (Pending Review) | — | Project Stakeholder |
+
+            ---
+
+            # TABLE OF CONTENTS
+
+            (Generate a real table of contents listing all sections and subsections with section numbers)
 
             ---
 
             # 1. Introduction
 
             ## 1.1 Purpose
-            (Describe the purpose of this SRS document for the project)
+            Write 3-5 sentences describing the purpose of this SRS document. Mention:
+            - What system this document specifies
+            - Who the intended audience is (developers, testers, stakeholders)
+            - What decisions this document supports
 
             ## 1.2 Definitions, Acronyms
-            (List all abbreviations and technical terms)
+            Extract ALL technical terms, abbreviations, and domain-specific vocabulary from the Jira issues. Format each as:
+            - **TERM:** Full definition with context
+
+            Include at least: SRS, API, UI/UX, CRUD, and any domain-specific terms from the issues.
 
             ## 1.3 References
-            - IEEE Std 830-1998
-            - (Add domain-specific references)
+            - IEEE Std 830-1998 — IEEE Recommended Practice for Software Requirements Specifications
+            - List any technologies, frameworks, or standards implied by the Jira issues
 
             ---
 
             # 2. Overall Description
 
             ## 2.1 Product Perspective
-            (Describe the system context — standalone or part of larger system)
+            Write 5-8 sentences describing:
+            - What the system does at a high level
+            - Whether it's standalone or part of a larger ecosystem
+            - What external systems it interacts with (APIs, databases, third-party services)
+            - The technology context (web app, mobile app, etc.) inferred from the issues
 
             ## 2.2 Business Process
-            (Provide high-level workflows supported by the system, derived from Jira issues)
+            For EACH distinct business workflow identified from the Jira issues, describe:
+            - **Process Name:** Clear name
+            - **Description:** 2-3 sentences explaining the workflow
+            - **Actors involved:** Who participates
+            - **Key steps:** Numbered list of high-level steps
 
             ## 2.3 User Classes
-            (Define user classes with Goals, Tasks, Technical Expertise)
+            For EACH user role identified or inferred from the Jira issues:
+
+            ### [Role Name] (e.g., Administrator, Student, Mentor)
+            - **Goals:** What they want to achieve (list 3+ goals)
+            - **Tasks:** Specific actions they perform (list 3+ tasks)
+            - **Technical Expertise:** Beginner / Intermediate / Advanced
+            - **Frequency of Use:** Daily / Weekly / Occasionally
 
             ---
 
             # 3. FUNCTIONAL REQUIREMENTS
 
             ## 3.1 Use Case Diagram
-            (Describe the overall use case diagram textually)
+            Provide a **textual description** of the use case diagram:
+            - List all actors on the left
+            - List all use cases grouped by module/feature
+            - Describe relationships (include, extend, generalization)
+            - Use clear formatting to make it readable
 
             ## 3.2 Use Case Specifications
 
-            For EACH use case, use this EXACT table format:
+            For EVERY Jira issue (or group of closely related issues), create a complete Use Case using this EXACT format:
+
+            ---
 
             ### USE CASE SPECIFICATION
 
             | Field | Value |
             |--------|---------|
-            | Use-case No. | UC-X |
+            | Use-case No. | UC-[number] |
             | Use-case Version | 1.0 |
-            | Use-case Name | [Name derived from Jira issue] |
-            | Author | Auto-generated |
-            | Date | {DateTime.UtcNow:MMMM dd, yyyy} |
-            | Priority | [From Jira priority or infer] |
-            | Primary Actor | [User/Admin] |
-            | Secondary Actor | [System/Database] |
+            | Use-case Name | [Descriptive name from Jira issue summary] |
+            | Author | Auto-generated from Jira |
+            | Date | {today} |
+            | Priority | [High/Medium/Low — infer from Jira priority or issue type] |
+            | Primary Actor | [Specific actor, e.g., Student, Admin, System] |
+            | Secondary Actor | [System, Database, External API, etc.] |
 
             **Description:**
-            [Brief summary from Jira issue]
+            [3-5 sentences describing what this use case accomplishes and why it's important]
 
             **Triggers:**
-            [Event that starts use case]
+            [Specific event or action that initiates this use case]
 
             **Preconditions:**
-            - PRE-1. [Condition]
+            - PRE-1. [Specific condition that must be true]
+            - PRE-2. [Another condition]
+            - PRE-3. [Another condition if applicable]
 
             **Post Conditions:**
-            - POST-1. [Result]
+            - POST-1. [Specific result/state after success]
+            - POST-2. [Another result]
 
             ### Main Success Scenario
-            1. [Step 1]
-            2. [Step 2]
+            1. [Actor] navigates to / initiates [specific action]
+            2. System displays / loads [specific UI or data]
+            3. [Actor] enters / selects [specific input]
+            4. System validates [what is validated]
+            5. System processes [what happens]
+            6. System confirms [success feedback]
+            7. [Final state description]
 
             ### Alternative Scenario
-            **1.1 [Scenario Name]**
-            - [Description]
+            **[Step#]a. [Scenario Name]**
+            - [Detailed description of what happens differently]
+            - [How the system responds]
+            - [How flow continues or returns to main scenario]
 
             ### Exceptions
-            **E1 — [Error Name]**
-            - [Description]
+            **E1 — [Specific Error Name]**
+            - Condition: [When this error occurs]
+            - System response: [What the system does]
+            - User recovery: [How the user recovers]
 
             ### Relationships
-            [Dependencies on other use cases]
+            - Extends: [UC-X if applicable]
+            - Includes: [UC-Y if applicable]
+            - Depends on: [UC-Z if applicable]
 
             ### Business Rules
-            [Reference BR-XX]
+            - BR-[XX]: [Specific rule that applies]
 
             ---
 
+            (REPEAT the above for EVERY use case — do NOT skip any Jira issues)
+
             ## 3.3 State Diagrams
-            (Describe state diagrams for entities with lifecycle complexity)
+            For entities with lifecycle states (e.g., Project Status, Task Status, User Account), describe:
+            - Entity name
+            - All possible states
+            - Transitions between states with trigger events
+            - Use text format: State1 --[event]--> State2
 
             ## 3.4 Data Flow Diagrams
-            (Describe DFDs for critical processes)
+            Describe the data flow for the 2-3 most critical processes:
+            - External entities (actors, systems)
+            - Processes (numbered)
+            - Data stores
+            - Data flows with descriptions
 
             ## 3.5 Logical Data Model
-            (Describe ERD or schema)
+            Describe the key entities and their relationships:
+            - Entity name
+            - Key attributes (name, type, constraints)
+            - Relationships (one-to-many, many-to-many, etc.)
 
             ---
 
             # 4. NON-FUNCTIONAL REQUIREMENTS
 
             ## 4.1 Usability
-            - [Requirements]
+            - USR-1: [Specific measurable usability requirement, e.g., "New users shall complete registration in under 3 minutes"]
+            - USR-2: [e.g., "The system shall support mobile responsive design for screens 320px and above"]
+            - USR-3: [e.g., "All form validation errors shall display within 500ms of user input"]
 
             ## 4.2 Reliability
-            - [Requirements]
+            - REL-1: [e.g., "System uptime shall be 99.5% measured monthly"]
+            - REL-2: [e.g., "Automated database backups shall occur every 24 hours"]
+            - REL-3: [e.g., "Mean Time To Recovery (MTTR) shall not exceed 4 hours"]
 
             ## 4.3 Performance
-            - [Requirements]
+            - PER-1: [e.g., "API response time shall be < 2 seconds for 95% of requests under normal load"]
+            - PER-2: [e.g., "System shall support 500 concurrent users without degradation"]
+            - PER-3: [e.g., "Page load time shall be < 3 seconds on 4G mobile connection"]
 
             ## 4.4 Reusability
-            - [Requirements]
+            - REU-1: [e.g., "System shall use modular architecture with independent service components"]
+            - REU-2: [e.g., "API endpoints shall follow RESTful conventions for third-party integration"]
 
             ## 4.5 Scalability
-            - [Requirements]
+            - SCA-1: [e.g., "System architecture shall support horizontal scaling to handle 10x user growth"]
+            - SCA-2: [e.g., "Database shall support partitioning for tables exceeding 1M rows"]
 
             ---
 
             # 5. Supporting Information
 
+            ## 5.1 Appendices
+
             ## Appendix A — Business Rules Reference
-            (Use format BR-XX for each rule, grouped by category)
+
+            Group ALL business rules by category. Each rule must be specific and actionable:
+
+            ### User Authentication & Authorization
+            - BR-01: [Concrete rule, e.g., "Users must verify email before accessing system features"]
+            - BR-02: [e.g., "Session timeout after 30 minutes of inactivity"]
+
+            ### Data Validation
+            - BR-XX: [e.g., "Email format must follow RFC 5322 standard"]
+
+            ### Business Logic
+            - BR-XX: [Rules specific to the domain from Jira issues]
+
+            ### Data Privacy & Security
+            - BR-XX: [e.g., "Passwords must be hashed using bcrypt with minimum 12 rounds"]
 
             ## Appendix B — Integration Requirements
-            (List external systems or APIs)
+            List ALL external systems, APIs, and third-party services mentioned or implied in the Jira issues:
+            - System name, purpose, integration method (REST API, webhook, etc.)
 
             ## Appendix C — Security Requirements
-            (List required protocols and standards)
+            - Encryption standards (TLS 1.2+, AES-256, etc.)
+            - Authentication method (JWT, OAuth 2.0, etc.)
+            - Authorization model (RBAC, ABAC)
+            - Compliance requirements (if applicable)
 
             ---
 
-            ## Jira Issues JSON Data
+            **{projectName}**
+
+            ---
+
+            ## Jira Issues JSON Data (INPUT — analyze this thoroughly)
             ```json
             {jiraIssuesJson}
             ```
 
-            Generate the complete SRS document now.
+            IMPORTANT REMINDERS:
+            - Fill EVERY section with real content, not placeholders
+            - Create a Use Case for EVERY Jira issue or logical group
+            - Each Use Case needs 5+ steps, alternatives, and exceptions
+            - Non-functional requirements must be specific and measurable
+            - Business rules must be concrete with BR-XX numbering
+            - Output raw Markdown only — no code fences wrapping the entire document
             """;
     }
 
@@ -300,5 +447,195 @@ public class SrsGeneratorService : ISrsGeneratorService
         }
 
         return content.Trim();
+    }
+
+    #region JSON Parsing Helpers (from DucAn)
+
+    /// <summary>
+    /// Parses raw Jira JSON into structured ParsedIssue objects for better data extraction.
+    /// This improves reliability when feeding issues to the AI for SRS generation.
+    /// </summary>
+    private List<ParsedIssue> ParseJiraIssues(string rawJson)
+    {
+        var issues = new List<ParsedIssue>();
+
+        try
+        {
+            var root = JsonSerializer.Deserialize<JsonElement>(rawJson, JsonOptions);
+            if (!root.TryGetProperty("issues", out var issuesArray))
+                return issues;
+
+            foreach (var issue in issuesArray.EnumerateArray())
+            {
+                var key = issue.GetProperty("key").GetString() ?? string.Empty;
+                var fields = issue.GetProperty("fields");
+
+                var parsed = new ParsedIssue
+                {
+                    Key = key,
+                    Summary = GetString(fields, "summary"),
+                    Description = GetAtlassianDocText(fields, "description"),
+                    Status = GetNestedString(fields, "status", "name"),
+                    IssueType = GetNestedString(fields, "issuetype", "name"),
+                    Priority = GetNestedString(fields, "priority", "name"),
+                    Assignee = GetNestedString(fields, "assignee", "displayName"),
+                    Created = GetDateTime(fields, "created"),
+                    Updated = GetDateTime(fields, "updated"),
+                    ParentKey = GetNestedString(fields, "parent", "key"),
+                    Labels = GetStringArray(fields, "labels"),
+                    Components = GetNamedArray(fields, "components"),
+                    FixVersions = GetNamedArray(fields, "fixVersions"),
+                    LinkedIssueKeys = GetLinkedIssueKeys(fields)
+                };
+
+                issues.Add(parsed);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error parsing Jira issues JSON; continuing with raw data");
+        }
+
+        return issues;
+    }
+
+    /// <summary>
+    /// Extracts a simple string value from a JSON element.
+    /// </summary>
+    private static string GetString(JsonElement el, string prop)
+    {
+        return el.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String
+            ? val.GetString() ?? string.Empty
+            : string.Empty;
+    }
+
+    /// <summary>
+    /// Extracts a nested string value (e.g., status.name).
+    /// </summary>
+    private static string GetNestedString(JsonElement el, string prop, string nested)
+    {
+        if (el.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Object)
+            return GetString(val, nested);
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Parses an ISO 8601 DateTime from a JSON element.
+    /// </summary>
+    private static DateTime GetDateTime(JsonElement el, string prop)
+    {
+        if (el.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String)
+        {
+            if (DateTime.TryParse(val.GetString(), out var dt))
+                return dt;
+        }
+        return DateTime.MinValue;
+    }
+
+    /// <summary>
+    /// Extracts an array of simple string values.
+    /// </summary>
+    private static List<string> GetStringArray(JsonElement el, string prop)
+    {
+        if (el.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Array)
+            return val.EnumerateArray().Where(v => v.ValueKind == JsonValueKind.String).Select(v => v.GetString()!).ToList();
+        return [];
+    }
+
+    /// <summary>
+    /// Extracts an array of named objects (objects with a "name" property).
+    /// </summary>
+    private static List<string> GetNamedArray(JsonElement el, string prop)
+    {
+        if (el.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.Array)
+            return val.EnumerateArray()
+                .Where(v => v.ValueKind == JsonValueKind.Object)
+                .Select(v => GetString(v, "name"))
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList();
+        return [];
+    }
+
+    /// <summary>
+    /// Extracts linked Jira issue keys from the issuelinks array.
+    /// </summary>
+    private static List<string> GetLinkedIssueKeys(JsonElement fields)
+    {
+        var keys = new List<string>();
+        if (!fields.TryGetProperty("issuelinks", out var links) || links.ValueKind != JsonValueKind.Array)
+            return keys;
+
+        foreach (var link in links.EnumerateArray())
+        {
+            if (link.TryGetProperty("outwardIssue", out var outward) && outward.ValueKind == JsonValueKind.Object)
+                keys.Add(GetString(outward, "key"));
+            if (link.TryGetProperty("inwardIssue", out var inward) && inward.ValueKind == JsonValueKind.Object)
+                keys.Add(GetString(inward, "key"));
+        }
+
+        return keys.Where(k => !string.IsNullOrEmpty(k)).ToList();
+    }
+
+    /// <summary>
+    /// Extracts plain text from Atlassian Document Format (ADF) description fields.
+    /// Jira's description format is structured JSON; this extracts readable text.
+    /// </summary>
+    private static string GetAtlassianDocText(JsonElement fields, string prop)
+    {
+        if (!fields.TryGetProperty(prop, out var desc) || desc.ValueKind != JsonValueKind.Object)
+            return string.Empty;
+
+        if (!desc.TryGetProperty("content", out var content) || content.ValueKind != JsonValueKind.Array)
+            return string.Empty;
+
+        var parts = new List<string>();
+        ExtractTextFromAdf(content, parts);
+        return string.Join(" ", parts);
+    }
+
+    /// <summary>
+    /// Recursively extracts text nodes from Atlassian Document Format.
+    /// </summary>
+    private static void ExtractTextFromAdf(JsonElement element, List<string> parts)
+    {
+        if (element.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var item in element.EnumerateArray())
+                ExtractTextFromAdf(item, parts);
+        }
+        else if (element.ValueKind == JsonValueKind.Object)
+        {
+            if (element.TryGetProperty("type", out var type) && type.GetString() == "text"
+                && element.TryGetProperty("text", out var text))
+            {
+                parts.Add(text.GetString() ?? string.Empty);
+            }
+
+            if (element.TryGetProperty("content", out var nested))
+                ExtractTextFromAdf(nested, parts);
+        }
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Represents a parsed Jira issue with structured fields for easier manipulation.
+    /// </summary>
+    private sealed class ParsedIssue
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Summary { get; set; } = string.Empty;
+        public string? Description { get; set; }
+        public string Status { get; set; } = string.Empty;
+        public string IssueType { get; set; } = string.Empty;
+        public string Priority { get; set; } = string.Empty;
+        public string? Assignee { get; set; }
+        public DateTime Created { get; set; }
+        public DateTime Updated { get; set; }
+        public string? ParentKey { get; set; }
+        public List<string> Labels { get; set; } = [];
+        public List<string> Components { get; set; } = [];
+        public List<string> FixVersions { get; set; } = [];
+        public List<string> LinkedIssueKeys { get; set; } = [];
     }
 }

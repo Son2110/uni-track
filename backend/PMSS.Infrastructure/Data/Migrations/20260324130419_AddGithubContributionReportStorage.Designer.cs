@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PMSS.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using PMSS.Infrastructure.Data;
 namespace PMSS.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324130419_AddGithubContributionReportStorage")]
+    partial class AddGithubContributionReportStorage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -49,7 +52,7 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.HasIndex("RequesterId", "ProjectId", "Status");
 
-                    b.ToTable("AccessRequests", (string)null);
+                    b.ToTable("AccessRequests");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.Class", b =>
@@ -88,7 +91,7 @@ namespace PMSS.Infrastructure.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("unique_class_per_semester_course");
 
-                    b.ToTable("Classes", (string)null);
+                    b.ToTable("Classes");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.ClassEnrollment", b =>
@@ -113,7 +116,7 @@ namespace PMSS.Infrastructure.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("no_duplicate_course_per_semester");
 
-                    b.ToTable("ClassEnrollments", (string)null);
+                    b.ToTable("ClassEnrollments");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.Course", b =>
@@ -146,7 +149,7 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.HasIndex("Code")
                         .IsUnique();
 
-                    b.ToTable("Courses", (string)null);
+                    b.ToTable("Courses");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.GithubContributionReport", b =>
@@ -216,7 +219,7 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.HasIndex("ProjectId", "CreatedAt");
 
-                    b.ToTable("GithubContributionReports", (string)null);
+                    b.ToTable("GithubContributionReports");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.GithubRepo", b =>
@@ -276,7 +279,7 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.HasIndex("RepoOwnerName", "RepoName")
                         .IsUnique();
 
-                    b.ToTable("GithubRepos", (string)null);
+                    b.ToTable("GithubRepos");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.JiraConfig", b =>
@@ -325,7 +328,7 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.HasIndex("ProjectId")
                         .IsUnique();
 
-                    b.ToTable("JiraConfigs", (string)null);
+                    b.ToTable("JiraConfigs");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.Notification", b =>
@@ -364,7 +367,7 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.HasIndex("UserId", "IsRead");
 
-                    b.ToTable("Notifications", (string)null);
+                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.Project", b =>
@@ -394,7 +397,7 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.HasIndex("ClassId");
 
-                    b.ToTable("Projects", (string)null);
+                    b.ToTable("Projects");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.ProjectMember", b =>
@@ -412,7 +415,7 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("ProjectMembers", (string)null);
+                    b.ToTable("ProjectMembers");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.RepoContributor", b =>
@@ -438,7 +441,7 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RepoContributors", (string)null);
+                    b.ToTable("RepoContributors");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.Semester", b =>
@@ -469,7 +472,7 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Semesters", (string)null);
+                    b.ToTable("Semesters");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.User", b =>
@@ -523,7 +526,7 @@ namespace PMSS.Infrastructure.Data.Migrations
                         .IsUnique()
                         .HasFilter("[GithubUsername] IS NOT NULL");
 
-                    b.ToTable("Users", (string)null);
+                    b.ToTable("Users");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.UserWeeklyContribution", b =>
@@ -575,7 +578,7 @@ namespace PMSS.Infrastructure.Data.Migrations
                     b.HasIndex("WeeklyContributionId", "GithubUsername")
                         .IsUnique();
 
-                    b.ToTable("UserWeeklyContributions", (string)null);
+                    b.ToTable("UserWeeklyContributions");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.WeeklyContribution", b =>
@@ -626,7 +629,7 @@ namespace PMSS.Infrastructure.Data.Migrations
 
                     b.HasIndex("WeekStart", "WeekEnd");
 
-                    b.ToTable("WeeklyContributions", (string)null);
+                    b.ToTable("WeeklyContributions");
                 });
 
             modelBuilder.Entity("PMSS.Domain.Entities.AccessRequest", b =>
