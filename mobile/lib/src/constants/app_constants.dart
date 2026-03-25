@@ -2,9 +2,9 @@ class AppConstants {
   AppConstants._();
 
   // API Base URL
-  // Android emulator: http://10.0.2.2:5068
-  // iOS simulator / web / desktop: http://localhost:5068
-  static const String baseUrl = 'https://localhost:7136';
+  // Deployed backend (Azure App Service)
+  static const String baseUrl =
+      'https://unitrackpmss-bkhqhkazfpc4dchr.southeastasia-01.azurewebsites.net';
 
   // Shared Preferences Keys
   static const String tokenKey = 'auth_token';
