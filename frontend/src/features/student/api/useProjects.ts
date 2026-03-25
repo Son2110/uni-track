@@ -498,6 +498,7 @@ export const useUpdateJiraConfig = () => {
 export interface GenerateSrsFileResponse {
   success: boolean;
   filePath: string;
+  data?: string;
 }
 
 export interface ListSrsFilesResponse {
@@ -529,20 +530,38 @@ export const useListSrsFiles = (projectId: string, enabled: boolean = true) => {
   });
 };
 
+export interface GenerateSrsOptions {
+  usePaidModel?: boolean;
+  modelOption?: string;
+}
+
 export const useGenerateSrs = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (projectId: string) => {
-      const response = await apiClient.post<GenerateSrsFileResponse>(
-        `/api/jira/generate-srs/${projectId}`,
-        {},
+    mutationFn: async ({
+      projectId,
+      ...options
+    }: {
+      projectId: string;
+    } & GenerateSrsOptions) => {
+      // Use URLSearchParams to pass parameters in query string for GET request
+      const params = new URLSearchParams();
+      if (options.usePaidModel)
+        params.append("usePaidModel", String(options.usePaidModel));
+      if (options.modelOption)
+        params.append("modelOption", options.modelOption);
+
+      const response = await apiClient.get<string>(
+        `/api/v1/projects/${projectId}/srs/markdown?${params.toString()}`,
       );
-      return response.data;
+      console.log(response.data);
+      // The response is already the data we want (markdown string)
+      return { success: true, filePath: "", data: response.data };
     },
-    onSuccess: (_, projectId) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["jira-srs-files", projectId],
+        queryKey: ["jira-srs-files", variables.projectId],
       });
     },
   });

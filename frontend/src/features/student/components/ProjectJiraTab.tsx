@@ -19,7 +19,6 @@ import {
   Settings,
   FileText,
   Download,
-  FileDown,
 } from "lucide-react";
 
 interface ProjectJiraTabProps {
@@ -35,7 +34,6 @@ export function ProjectJiraTab({
   const [lastGeneratedFilePath, setLastGeneratedFilePath] = useState<
     string | null
   >(null);
-  const [isDownloadingDocx, setIsDownloadingDocx] = useState(false);
   const [downloadingFileName, setDownloadingFileName] = useState<string | null>(
     null,
   );
@@ -53,9 +51,23 @@ export function ProjectJiraTab({
   const handleGenerateSrs = async () => {
     if (readOnly) return;
     try {
-      const result = await generateSrsMutation.mutateAsync(projectId);
-      setLastGeneratedFilePath(result.filePath);
-      toast.success(`SRS generated and saved to ${result.filePath}`);
+      const result = await generateSrsMutation.mutateAsync({
+        projectId,
+        usePaidModel: true,
+        modelOption: "",
+      });
+      // Handle file download
+      const blob = new Blob([result.data as string], { type: "text/markdown" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `SRS_${projectId}.md`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`SRS generated successfully`);
     } catch (error) {
       console.error("Failed to generate SRS:", error);
       toast.error("Failed to generate SRS. Please try again.");
@@ -101,18 +113,6 @@ export function ProjectJiraTab({
           ? error.message
           : "Failed to download file. Please try again.",
       );
-    }
-  };
-
-  const handleDownloadDocx = async () => {
-    try {
-      setIsDownloadingDocx(true);
-      await downloadProtectedFile(
-        `/api/v1/projects/${projectId}/srs/docx`,
-        `SRS_${projectId}.docx`,
-      );
-    } finally {
-      setIsDownloadingDocx(false);
     }
   };
 
@@ -251,16 +251,6 @@ export function ProjectJiraTab({
                 Software Requirements Specification (SRS)
               </h2>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadDocx}
-                  isLoading={isDownloadingDocx}
-                  disabled={!hasConfig}
-                >
-                  <FileDown className="w-4 h-4 mr-2" />
-                  Download DOCX
-                </Button>
                 {!readOnly && (
                   <Button
                     variant="outline"
