@@ -15,8 +15,7 @@ public static class PasswordHasher
         var salt = new byte[SaltSize];
         rng.GetBytes(salt);
 
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
-        var hash = pbkdf2.GetBytes(HashSize);
+        var hash = ComputeHash(password, salt);
 
         var hashBytes = new byte[SaltSize + HashSize];
         Array.Copy(salt, 0, hashBytes, 0, SaltSize);
@@ -40,8 +39,7 @@ public static class PasswordHasher
             var storedHash = new byte[HashSize];
             Array.Copy(hashBytes, SaltSize, storedHash, 0, HashSize);
 
-            using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA256);
-            var computedHash = pbkdf2.GetBytes(HashSize);
+            var computedHash = ComputeHash(password, salt);
 
             return CryptographicEquals(storedHash, computedHash);
         }
@@ -49,6 +47,17 @@ public static class PasswordHasher
         {
             return false;
         }
+    }
+
+    private static byte[] ComputeHash(string password, byte[] salt)
+    {
+        var passwordBytes = Encoding.UTF8.GetBytes(password);
+        return Rfc2898DeriveBytes.Pbkdf2(
+            passwordBytes,
+            salt,
+            Iterations,
+            HashAlgorithmName.SHA256,
+            HashSize);
     }
 
     private static bool CryptographicEquals(byte[] a, byte[] b)

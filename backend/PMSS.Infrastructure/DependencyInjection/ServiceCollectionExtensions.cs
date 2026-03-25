@@ -25,8 +25,7 @@ public static class ServiceCollectionExtensions
                 b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
         // Register AutoMapper
-        var config = new MapperConfiguration(cfg => cfg.AddProfile<MappingProfile>());
-        services.AddSingleton<IMapper>(config.CreateMapper());
+        services.AddAutoMapper(cfg => cfg.AddProfile<MappingProfile>());
 
         // Configure JWT settings
         var jwtSettings = configuration.GetSection("JwtSettings");

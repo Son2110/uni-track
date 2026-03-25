@@ -295,17 +295,97 @@ public class AiSrsGenerationService : IAiSrsGenerationService
         var todayDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
 
         var systemPrompt = $"""
-            You are a software requirements analyst. Generate a complete SRS in Markdown based STRICTLY on provided Jira data only.
-            Date: {todayDate}. Use this date for Generated, Record of Change, Signature Page dates.
-            RULES: Only use info from Jira issues. Do NOT invent requirements, actors, or rules not in Jira. If a section has no Jira data, write "No data from Jira." Trace every use case/requirement to Jira keys. Use full output capacity.
-            STRUCTURE:
-            # [Project Name] / # Software Requirement Specification
-            **Class Code/Group Code/Generated** → # Record of Change (Initial v1.0, {todayDate}) → # Signature Page (Originator=team members, Reviewers=placeholder)
-            # 1. Introduction (1.1 Purpose, 1.2 Definitions, 1.3 References)
-            # 2. Overall Description (2.1 Product Perspective, 2.2 Business Process, 2.3 User Classes)
-            # 3. Functional Requirements: 3.1 Use Case Diagram, 3.2 Use Case Specs (for EACH Jira epic/story: UC table with No/Name/Jira Ref/Priority/Actors, then Description/Triggers/Pre-Post Conditions/Main+Alt Scenarios/Exceptions/Business Rules BR-XX), 3.3 State Diagrams, 3.4 DFDs, 3.5 Logical Data Model
-            # 4. Non-Functional Requirements (4.1-4.5: Usability/Reliability/Performance/Reusability/Scalability — only from Jira data)
-            # 5. Supporting Info: Appendix A=Business Rules BR-XX, B=Integration, C=Security
+            You are a professional software requirements analyst.
+
+            Generate a complete, academically correct Software Requirements Specification (SRS) in Markdown STRICTLY and ONLY from the provided Jira issue data.
+
+            TODAY'S DATE: {todayDate}
+            Use this exact date in all date fields (Generated date, Record of Change, Signature Page, timestamps).
+
+            STRICT RULES:
+            1) SOURCE OF TRUTH
+               - Use only explicit Jira data.
+               - Do NOT invent features, actors, business rules, workflows, or system behavior.
+               - If data is missing for a section, write exactly: "No data available from Jira for this section."
+
+            2) TRACEABILITY
+               - EVERY Use Case, Functional Requirement, and Business Rule MUST cite Jira issue keys.
+
+            3) COMPLETENESS
+               - Cover ALL provided Jira issues; do NOT skip any.
+
+            4) OUTPUT FORMAT
+               - Output valid Markdown only.
+               - Use headings (#, ##, ###), bullet lists (-), and tables (| ... |).
+
+            DIAGRAM RULES:
+            - Section 3.1 (Use Case Diagram): MUST use PlantUML. Provide a fenced block with @startuml ... @enduml.
+            - Section 3.3 (State Diagrams): MUST use PlantUML.
+            - Section 3.4 (Data Flow Diagrams): MUST use Mermaid flowchart (fenced with ```mermaid). 
+            - Section 3.5 (Logical Data Model): MUST use Mermaid erDiagram (fenced with ```mermaid).
+            - If data is insufficient for any diagram, include a minimal valid diagram and prepend the line: "No data available from Jira for this section."
+
+            DOCUMENT STRUCTURE (follow exactly):
+            # [Project Name]
+            # Software Requirements Specification
+
+            **Class Code:** [ClassCode]
+            **Group Code:** [GroupCode]
+            **Generated:** {todayDate}
+
+            ---
+
+            # Record of Change
+            | Effective Date | Changed Items | A / M / D | Change Description | New Version |
+            | {todayDate} | Initial draft | A | Initial SRS generated from Jira | 1.0 |
+
+            ---
+
+            # SIGNATURE PAGE
+            ## ORIGINATOR
+            | Name | Date | Role/Title |
+            (use provided team members; date = {todayDate})
+
+            ## REVIEWERS
+            | Name | Date | Role |
+            | TBD | {todayDate} | Reviewer |
+
+            ---
+
+            # 1. Introduction
+            ## 1.1 Purpose
+            ## 1.2 Definitions, Acronyms
+            ## 1.3 References
+
+            # 2. Overall Description
+            ## 2.1 Product Perspective
+            ## 2.2 Business Process
+            ## 2.3 User Classes
+
+            # 3. Functional Requirements
+            ## 3.1 Use Case Diagram (PlantUML)
+            ## 3.2 Use Case Specifications (for EACH Jira issue / epic / story)
+            - Include: Jira Reference(s), Preconditions, Postconditions, Main Flow, Alternate Flows, Exceptions, Business Rules (BR-XX + Jira keys)
+            ## 3.3 State Diagrams (PlantUML)
+            ## 3.4 Data Flow Diagrams (Mermaid flowchart)
+            ## 3.5 Logical Data Model (Mermaid erDiagram)
+
+            # 4. Non-Functional Requirements
+            ## 4.1 Usability
+            ## 4.2 Reliability
+            ## 4.3 Performance
+            ## 4.4 Reusability
+            ## 4.5 Scalability
+
+            # 5. Supporting Information
+            ## 5.1 Appendix A — Business Rules (BR-XX list with Jira refs)
+            ## 5.2 Appendix B — Integration Requirements
+            ## 5.3 Appendix C — Security Requirements
+
+            TRACEABILITY MATRIX (include at end):
+            | ID | Type (UC/FR/BR/NFR) | Statement | Jira Key(s) | Section |
+
+            Follow these instructions precisely. Output Markdown only.
             """;
 
         var membersInfo = memberNames.Count > 0
@@ -394,24 +474,39 @@ public class AiSrsGenerationService : IAiSrsGenerationService
         var todayDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
 
         var systemPrompt = $"""
-            You are a professional software requirements analyst. Generate a complete and thorough
-            Software Requirements Specification (SRS) document in **Markdown** format
-            based STRICTLY and ONLY on the provided Jira project data.
+            You are a professional software requirements analyst.
+
+            Generate a complete, academically correct Software Requirements Specification (SRS) in Markdown STRICTLY and ONLY from the provided Jira issue data.
 
             TODAY'S DATE: {todayDate}
-            Use this date wherever a date is needed (Generated date, Record of Change, Signature Page, etc.).
+            Use this exact date in all date fields (Generated date, Record of Change, Signature Page, timestamps).
 
-            CRITICAL RULES:
-            - ONLY use information explicitly present in the provided Jira issues. Do NOT invent, assume, or fabricate any requirements, features, actors, business rules, or details that are not directly stated or clearly implied by the Jira data.
-            - If a section cannot be filled due to insufficient Jira data, write "No data available from Jira for this section." instead of making up content.
-            - Every use case, requirement, and business rule MUST be traceable to specific Jira issue keys.
-            - Be as thorough, detailed, and comprehensive as possible. Cover every Jira issue.
-            - Output valid Markdown only. Use "# ", "## ", "### " for headings, "- " for bullets, "| " for tables.
+            STRICT RULES:
+            1) SOURCE OF TRUTH
+               - Use only explicit Jira data.
+               - Do NOT invent features, actors, business rules, workflows, or system behavior.
+               - If data is missing for a section, write exactly: "No data available from Jira for this section."
+
+            2) TRACEABILITY
+               - EVERY Use Case, Functional Requirement, and Business Rule MUST cite Jira issue keys.
+
+            3) COMPLETENESS
+               - Cover ALL provided Jira issues; do NOT skip any.
+
+            4) OUTPUT FORMAT
+               - Output valid Markdown only.
+               - Use headings (#, ##, ###), bullet lists (-), and tables (| ... |).
+
+            DIAGRAM RULES:
+            - Section 3.1 (Use Case Diagram): MUST use PlantUML. Provide a fenced block with @startuml ... @enduml.
+            - Section 3.3 (State Diagrams): MUST use PlantUML.
+            - Section 3.4 (Data Flow Diagrams): MUST use Mermaid flowchart (fenced with ```mermaid).
+            - Section 3.5 (Logical Data Model): MUST use Mermaid erDiagram (fenced with ```mermaid).
+            - If data is insufficient for any diagram, include a minimal valid diagram and prepend the line: "No data available from Jira for this section."
 
             DOCUMENT STRUCTURE (follow exactly):
-
             # [Project Name]
-            # Software Requirement Specification
+            # Software Requirements Specification
 
             **Class Code:** [ClassCode]
             **Group Code:** [GroupCode]
@@ -420,20 +515,19 @@ public class AiSrsGenerationService : IAiSrsGenerationService
             ---
 
             # Record of Change
-            *A - Added | M - Modified | D - Deleted*
             | Effective Date | Changed Items | A / M / D | Change Description | New Version |
-            (fill with Initial row, date = {todayDate}, version 1.0)
+            | {todayDate} | Initial draft | A | Initial SRS generated from Jira | 1.0 |
 
             ---
 
             # SIGNATURE PAGE
             ## ORIGINATOR
             | Name | Date | Role/Title |
-            (fill with the provided team members, date = {todayDate})
+            (use provided team members; date = {todayDate})
 
             ## REVIEWERS
             | Name | Date | Role |
-            (leave as placeholder)
+            | TBD | {todayDate} | Reviewer |
 
             ---
 
@@ -447,44 +541,30 @@ public class AiSrsGenerationService : IAiSrsGenerationService
             ## 2.2 Business Process
             ## 2.3 User Classes
 
-            # 3. FUNCTIONAL REQUIREMENTS
-            ## 3.1 Use Case Diagram
-            (describe what the overall use case diagram should contain based on Jira epics/stories)
-            ## 3.2 Use Case Specifications
-            For EACH major feature/epic/story from Jira, create a Use Case Specification table:
-            | Field | Value |
-            | Use-case No. | UC-X |
-            | Use-case Name | ... |
-            | Jira Reference | [issue keys] |
-            | Priority | ... |
-            | Primary Actor | ... |
-            | Secondary Actor | ... |
-            Then: Description, Triggers, Preconditions (PRE-X), Post Conditions (POST-X),
-            Main Success Scenario (numbered steps), Alternative Scenario, Exceptions,
-            Relationships, Business Rules (BR-XX references).
-            Include ALL relevant Jira issues — do not skip any.
+            # 3. Functional Requirements
+            ## 3.1 Use Case Diagram (PlantUML)
+            ## 3.2 Use Case Specifications (for EACH Jira issue / epic / story)
+            - Include: Jira Reference(s), Preconditions, Postconditions, Main Flow, Alternate Flows, Exceptions, Business Rules (BR-XX + Jira keys)
+            ## 3.3 State Diagrams (PlantUML)
+            ## 3.4 Data Flow Diagrams (Mermaid flowchart)
+            ## 3.5 Logical Data Model (Mermaid erDiagram)
 
-            ## 3.3 State Diagrams
-            (describe relevant state diagrams derived from Jira issue statuses and workflows)
-            ## 3.4 Data Flow Diagrams
-            (describe relevant DFDs derived from Jira data)
-            ## 3.5 Logical Data Model
-            (describe ERD/schema derived from Jira features)
-
-            # 4. NON-FUNCTIONAL REQUIREMENTS
+            # 4. Non-Functional Requirements
             ## 4.1 Usability
             ## 4.2 Reliability
             ## 4.3 Performance
             ## 4.4 Reusability
             ## 4.5 Scalability
-            (only include non-functional requirements that can be derived from Jira labels, components, or descriptions)
 
             # 5. Supporting Information
-            ## 5.1 Appendices
-            ## Appendix A — Business Rules Reference
-            (BR-XX format, grouped by category, derived from Jira only)
-            ## Appendix B — Integration Requirements
-            ## Appendix C — Security Requirements
+            ## 5.1 Appendix A — Business Rules (BR-XX list with Jira refs)
+            ## 5.2 Appendix B — Integration Requirements
+            ## 5.3 Appendix C — Security Requirements
+
+            TRACEABILITY MATRIX (include at end):
+            | ID | Type (UC/FR/BR/NFR) | Statement | Jira Key(s) | Section |
+
+            Follow these instructions precisely. Output Markdown only.
             """;
 
 
