@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { LogOut, User, ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/context/AuthContext";
 
 /**
@@ -12,6 +13,7 @@ export function UserMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const { user, logout } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const navigate = useNavigate();
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -96,7 +98,13 @@ export function UserMenu() {
             <button
               onClick={() => {
                 setIsOpen(false);
-                // Navigate to profile
+                // Navigate to settings page based on role
+                if (user.role === "Student") {
+                  navigate("/student/settings");
+                } else if (user.role === "Teacher") {
+                  navigate("/teacher/settings");
+                }
+                // Admin role doesn't have settings page yet
               }}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >

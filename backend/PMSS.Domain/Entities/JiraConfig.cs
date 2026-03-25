@@ -11,6 +11,8 @@ public class JiraConfig
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public Guid? CreatedByUserId { get; set; }
 
     public virtual Project Project { get; set; } = null!;
+    public virtual User? CreatedByUser { get; set; }
 }

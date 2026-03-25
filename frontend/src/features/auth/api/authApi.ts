@@ -102,10 +102,29 @@ export const isTokenExpired = (): boolean => {
 
   try {
     // Decode JWT payload (simple base64 decode)
-    const payload = JSON.parse(atob(token.split(".")[1]));
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      return true; // Invalid format = expired
+    }
+
+    // Try to decode the payload
+    let payload;
+    try {
+      // JWT uses base64url encoding, which may need normalization
+      const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = atob(base64);
+      payload = JSON.parse(jsonPayload);
+    } catch {
+      return true; // Can't decode = invalid token = expired
+    }
+
+    if (!payload.exp) {
+      return false; // If no exp field, let backend validate
+    }
+
     const expirationTime = payload.exp * 1000; // Convert to milliseconds
     return Date.now() >= expirationTime;
   } catch {
-    return true;
+    return true; // For unexpected errors, treat as expired
   }
 };

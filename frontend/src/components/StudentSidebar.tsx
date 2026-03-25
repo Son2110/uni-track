@@ -1,7 +1,22 @@
-import { NavLink } from "react-router-dom";
-import { BookOpen, FolderKanban, Settings, User } from "lucide-react";
+import { NavLink, useNavigate } from "react-router-dom";
+import { BookOpen, FolderKanban, Settings } from "lucide-react";
+import { useAuth } from "@/features/auth/context/AuthContext";
 
 export function StudentSidebar() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Generate initials from name
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const userInitials = user?.name ? getInitials(user.name) : "S";
   const navItems = [
     { to: "/student/classes", icon: BookOpen, label: "My Classes" },
     { to: "/student/workspace", icon: FolderKanban, label: "Workspace" },
@@ -38,17 +53,22 @@ export function StudentSidebar() {
 
       {/* User Profile */}
       <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center gap-3 px-4 py-3">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-            <User className="w-5 h-5 text-primary" />
+        <button
+          onClick={() => navigate("/student/settings")}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors cursor-pointer hover:bg-gray-50 text-left"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm flex-shrink-0">
+            {userInitials}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-gray-900 truncate">
-              Student Name
+              {user?.name || "Student"}
             </p>
-            <p className="text-xs text-gray-500">Student</p>
+            <p className="text-xs text-gray-500 truncate">
+              {user?.email || ""}
+            </p>
           </div>
-        </div>
+        </button>
       </div>
     </aside>
   );
