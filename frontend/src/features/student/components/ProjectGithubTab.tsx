@@ -39,6 +39,7 @@ import {
   Loader2,
   ChevronUp,
   ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 const REST_API_BASE_URL = import.meta.env.VITE_REST_API_URL;
@@ -75,6 +76,7 @@ export function ProjectGithubTab({
   const isReportListLoading = isReportHistoryLoading || isReportHistoryFetching;
 
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null);
+  const [isReportSectionOpen, setIsReportSectionOpen] = useState(true);
 
   const handleEdit = (repo: GithubRepoDto) => {
     setEditingRepo(repo);
@@ -254,18 +256,28 @@ export function ProjectGithubTab({
       </Card>
 
       <Card className="border-gray-200 bg-white p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div
+            className="flex flex-1 cursor-pointer items-center gap-2"
+            onClick={() => setIsReportSectionOpen(!isReportSectionOpen)}
+          >
+            {isReportSectionOpen ? (
+              <ChevronDown className="h-5 w-5 text-gray-500" />
+            ) : (
+              <ChevronRight className="h-5 w-5 text-gray-500" />
+            )}
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-indigo-500" />
               <h2 className="text-lg font-semibold text-gray-900">
                 AI Contribution Reports
               </h2>
             </div>
-            <p className="mt-1 text-sm text-gray-500">
-              Generate AI-written summaries backed by your synced GitHub data
-              and keep a history for quick reviews.
-            </p>
+            {isReportSectionOpen && (
+              <p className="ml-4 truncate text-sm text-gray-500">
+                Generate AI-written summaries backed by your synced GitHub data
+                and keep a history for quick reviews.
+              </p>
+            )}
           </div>
           <Button onClick={() => setShowReportModal(true)} disabled={!hasRepos}>
             <Sparkles className="mr-2 h-4 w-4" />
@@ -273,30 +285,34 @@ export function ProjectGithubTab({
           </Button>
         </div>
 
-        {!hasRepos ? (
-          <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
-            Connect at least one repository before generating reports.
-          </div>
-        ) : isReportListLoading ? (
-          <div className="mt-6 flex items-center gap-2 text-gray-500">
-            <Loader2 className="h-4 w-4 animate-spin" /> Fetching reports...
-          </div>
-        ) : reportHistory.length === 0 ? (
-          <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
-            No reports yet. Generate your first summary to see it here.
-          </div>
-        ) : (
-          <div className="mt-6 space-y-3">
-            {reportHistory.map((report) => (
-              <GithubReportHistoryItem
-                key={report.reportId}
-                report={report}
-                projectId={projectId}
-                isExpanded={expandedReportId === report.reportId}
-                onToggle={() => handleToggleReport(report.reportId)}
-              />
-            ))}
-          </div>
+        {isReportSectionOpen && (
+          <>
+            {!hasRepos ? (
+              <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+                Connect at least one repository before generating reports.
+              </div>
+            ) : isReportListLoading ? (
+              <div className="mt-6 flex items-center gap-2 text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" /> Fetching reports...
+              </div>
+            ) : reportHistory.length === 0 ? (
+              <div className="mt-6 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+                No reports yet. Generate your first summary to see it here.
+              </div>
+            ) : (
+              <div className="mt-6 space-y-3">
+                {reportHistory.map((report) => (
+                  <GithubReportHistoryItem
+                    key={report.reportId}
+                    report={report}
+                    projectId={projectId}
+                    isExpanded={expandedReportId === report.reportId}
+                    onToggle={() => handleToggleReport(report.reportId)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </Card>
 
@@ -690,13 +706,16 @@ function GithubReportHistoryItem({
 
   return (
     <div
-      className={`flex flex-col gap-3 rounded-lg border transition-all duration-200 ${
+      className={`flex flex-col rounded-lg border transition-all duration-200 ${
         isExpanded
           ? "border-indigo-200 bg-indigo-50/30 ring-1 ring-indigo-100"
           : "border-gray-200 bg-gray-50 hover:border-gray-300"
-      } p-4`}
+      }`}
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+      <div
+        className="flex cursor-pointer flex-col gap-4 p-4 md:flex-row md:items-start md:justify-between"
+        onClick={onToggle}
+      >
         <div className="flex-1">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <FileText className="h-4 w-4 text-gray-400" />
@@ -720,27 +739,18 @@ function GithubReportHistoryItem({
           <span className="text-xs text-gray-500">
             Saved {new Date(report.createdAt).toLocaleString()}
           </span>
-          <Button
-            variant={isExpanded ? "secondary" : "outline"}
-            size="sm"
-            onClick={onToggle}
-            className="w-full md:w-auto"
-          >
+          <div className="mt-1 rounded-full p-1 hover:bg-gray-200">
             {isExpanded ? (
-              <>
-                <ChevronUp className="mr-1 h-4 w-4" /> Hide Detail
-              </>
+              <ChevronUp className="h-5 w-5 text-gray-500" />
             ) : (
-              <>
-                <ChevronDown className="mr-1 h-4 w-4" /> View Detail
-              </>
+              <ChevronDown className="h-5 w-5 text-gray-500" />
             )}
-          </Button>
+          </div>
         </div>
       </div>
 
       {isExpanded && (
-        <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300 border-t border-indigo-100 pt-4">
+        <div className="animate-in fade-in slide-in-from-top-2 duration-300 border-t border-indigo-100 px-4 pb-4 pt-4">
           <GithubReportDetailView
             projectId={projectId}
             reportId={report.reportId}

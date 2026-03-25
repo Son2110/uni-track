@@ -9,17 +9,9 @@ import {
   useJiraConfig,
   useCreateJiraConfig,
   useUpdateJiraConfig,
-  useListSrsFiles,
   useGenerateSrs,
 } from "../api/useProjects";
-import { getAuthToken } from "@/features/auth/api/authApi";
-import {
-  CheckSquare,
-  ExternalLink,
-  Settings,
-  FileText,
-  Download,
-} from "lucide-react";
+import { CheckSquare, ExternalLink, Settings, FileText } from "lucide-react";
 
 interface ProjectJiraTabProps {
   projectId: string;
@@ -34,18 +26,9 @@ export function ProjectJiraTab({
   const [lastGeneratedFilePath, setLastGeneratedFilePath] = useState<
     string | null
   >(null);
-  const [downloadingFileName, setDownloadingFileName] = useState<string | null>(
-    null,
-  );
-  const apiBaseUrl =
-    import.meta.env.VITE_REST_API_URL || window.location.origin;
 
   const { data: config, isLoading } = useJiraConfig(projectId);
   const hasConfig = !!config;
-  const { data: srsData, isLoading: isLoadingSrs } = useListSrsFiles(
-    projectId,
-    hasConfig,
-  );
   const generateSrsMutation = useGenerateSrs();
 
   const handleGenerateSrs = async () => {
@@ -67,64 +50,11 @@ export function ProjectJiraTab({
       link.remove();
       window.URL.revokeObjectURL(url);
 
-      toast.success(`SRS generated successfully`);
+      setLastGeneratedFilePath("downloaded"); // Mark as downloaded
+      toast.success(`SRS generated and downloaded successfully`);
     } catch (error) {
       console.error("Failed to generate SRS:", error);
       toast.error("Failed to generate SRS. Please try again.");
-    }
-  };
-
-  const downloadProtectedFile = async (
-    path: string,
-    suggestedFileName: string,
-  ) => {
-    try {
-      const token = getAuthToken();
-      if (!token) {
-        throw new Error("Missing authentication token. Please login again.");
-      }
-
-      const normalizedPath = path.startsWith("/") ? path : `/${path}`;
-      const downloadUrl = new URL(normalizedPath, apiBaseUrl).toString();
-      const response = await fetch(downloadUrl, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || `Download failed (${response.status})`);
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = suggestedFileName;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Failed to download file:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Failed to download file. Please try again.",
-      );
-    }
-  };
-
-  const handleDownloadExistingFile = async (fileName: string) => {
-    try {
-      setDownloadingFileName(fileName);
-      await downloadProtectedFile(
-        `/api/jira/srs/download/${fileName}`,
-        fileName,
-      );
-    } finally {
-      setDownloadingFileName(null);
     }
   };
 
@@ -268,46 +198,13 @@ export function ProjectJiraTab({
 
             {lastGeneratedFilePath && (
               <p className="mb-4 text-sm text-gray-500">
-                Latest AI-generated file saved at
-                <span className="ml-1 font-medium">
-                  {lastGeneratedFilePath}
-                </span>
+                Latest AI-generated file was saved to your downloads.
               </p>
             )}
 
-            {isLoadingSrs ? (
-              <div className="text-center py-4 text-sm text-gray-500">
-                Loading SRS files...
-              </div>
-            ) : srsData?.files?.length ? (
-              <div className="space-y-2">
-                {srsData.files.map((fileName) => (
-                  <div
-                    key={fileName}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {fileName}
-                      </span>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleDownloadExistingFile(fileName)}
-                      isLoading={downloadingFileName === fileName}
-                      title="Download"
-                    >
-                      <Download className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-6 text-sm text-gray-500 border border-dashed rounded-lg dark:border-gray-700">
-                No SRS document generated yet.
-              </div>
-            )}
+            <div className="text-center py-6 text-sm text-gray-500 border border-dashed rounded-lg dark:border-gray-700">
+              Click the button above to generate a new SRS document using AI
+            </div>
           </Card>
         </>
       )}

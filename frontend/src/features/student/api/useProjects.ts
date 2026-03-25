@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
+import { getAuthToken } from "@/features/auth/api/authApi";
 import { graphqlClient } from "@/lib/graphql";
 import { gql } from "graphql-request";
 import type {
@@ -492,43 +493,8 @@ export const useUpdateJiraConfig = () => {
 };
 
 // ============================================
-// JIRA SRS
+// SRS GENERATION
 // ============================================
-
-export interface GenerateSrsFileResponse {
-  success: boolean;
-  filePath: string;
-  data?: string;
-}
-
-export interface ListSrsFilesResponse {
-  projectId: string;
-  files: string[];
-  count: number;
-}
-
-export const useListSrsFiles = (projectId: string, enabled: boolean = true) => {
-  return useQuery({
-    queryKey: ["jira-srs-files", projectId],
-    queryFn: async () => {
-      try {
-        const response = await apiClient.get<ListSrsFilesResponse>(
-          `/api/jira/srs/files/${projectId}`,
-        );
-        return response.data;
-      } catch (error: any) {
-        if (
-          error?.message?.includes("400") ||
-          error?.message?.includes("404")
-        ) {
-          return { projectId, files: [], count: 0 };
-        }
-        throw error;
-      }
-    },
-    enabled: !!projectId && enabled,
-  });
-};
 
 export interface GenerateSrsOptions {
   usePaidModel?: boolean;
@@ -536,8 +502,6 @@ export interface GenerateSrsOptions {
 }
 
 export const useGenerateSrs = () => {
-  const queryClient = useQueryClient();
-
   return useMutation({
     mutationFn: async ({
       projectId,
@@ -552,17 +516,28 @@ export const useGenerateSrs = () => {
       if (options.modelOption)
         params.append("modelOption", options.modelOption);
 
-      const response = await apiClient.get<string>(
-        `/api/v1/projects/${projectId}/srs/markdown?${params.toString()}`,
+      const token = getAuthToken();
+      if (!token) throw new Error("No authentication token found");
+
+      const baseUrl = import.meta.env.VITE_REST_API_URL;
+      const response = await fetch(
+        `${baseUrl}/api/v1/projects/${projectId}/srs/markdown?${params.toString()}`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
       );
-      console.log(response.data);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+      }
+
+      const text = await response.text();
       // The response is already the data we want (markdown string)
-      return { success: true, filePath: "", data: response.data };
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["jira-srs-files", variables.projectId],
-      });
+      return { success: true, filePath: "", data: text };
     },
   });
 };
