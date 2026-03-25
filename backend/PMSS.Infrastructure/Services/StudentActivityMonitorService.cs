@@ -169,14 +169,25 @@ public class StudentActivityMonitorService : IStudentActivityMonitorService
         var studentActivities = studentEnrollments.Select(enrollment =>
         {
             var hasActivity = activityByUser.TryGetValue(enrollment.UserId, out var activity);
+            var totalCommits = 0;
+            var totalAdditions = 0;
+            var totalDeletions = 0;
+
+            if (hasActivity && activity is not null)
+            {
+                totalCommits = activity.TotalCommits;
+                totalAdditions = activity.TotalAdditions;
+                totalDeletions = activity.TotalDeletions;
+            }
+
             return new StudentActivityDto
             {
                 UserId = enrollment.UserId,
                 StudentName = enrollment.User.Name,
                 Email = enrollment.User.Email,
-                TotalCommits = hasActivity ? activity.TotalCommits : 0,
-                TotalAdditions = hasActivity ? activity.TotalAdditions : 0,
-                TotalDeletions = hasActivity ? activity.TotalDeletions : 0
+                TotalCommits = totalCommits,
+                TotalAdditions = totalAdditions,
+                TotalDeletions = totalDeletions
             };
         })
         .OrderBy(s => s.TotalCommits)
