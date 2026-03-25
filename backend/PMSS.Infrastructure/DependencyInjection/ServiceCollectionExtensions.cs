@@ -66,17 +66,18 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IProjectMemberRepository, ProjectMemberRepository>();
         services.AddScoped<IGithubRepoRepository, GithubRepoRepository>();
         services.AddScoped<IRepoContributorRepository, RepoContributorRepository>();
-        services.AddScoped<IWeeklyContributionRepository, WeeklyContributionRepository>();
-        services.AddScoped<IUserWeeklyContributionRepository, UserWeeklyContributionRepository>();
         services.AddScoped<IJiraConfigRepository, JiraConfigRepository>();
         services.AddScoped<IAccessRequestRepository, AccessRequestRepository>();
+        services.AddScoped<IWeeklyContributionRepository, WeeklyContributionRepository>();
+        services.AddScoped<IUserWeeklyContributionRepository, UserWeeklyContributionRepository>();
+        services.AddScoped<IGithubContributionReportRepository, GithubContributionReportRepository>();
         services.AddScoped<INotificationRepository, NotificationRepository>();
-
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.AddHttpClient();
         services.AddScoped<IGithubApiService, GithubApiService>();
         services.AddScoped<IJiraApiService, JiraApiService>();
+        services.AddSingleton<ISrsGeneratorService, SrsGeneratorService>();
 
         services.AddScoped<ISemesterService, SemesterService>();
         services.AddScoped<IUserService, UserService>();
@@ -93,6 +94,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IStudentActivityMonitorService, StudentActivityMonitorService>();
         services.AddScoped<ISrsGenerationService, SrsGenerationService>();
         services.AddScoped<IAiSrsGenerationService, AiSrsGenerationService>();
+        services.AddScoped<IGithubContributionReportService, GithubContributionReportService>();
 
         // Register background service for automated GitHub data sync at midnight
         services.AddHostedService<GithubDataSyncBackgroundService>();

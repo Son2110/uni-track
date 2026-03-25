@@ -12,7 +12,8 @@ namespace PMSS.Infrastructure.Services;
 
 /// <summary>
 /// Service for interacting with Jira REST API (v3)
-/// Uses the new /rest/api/3/search/jql endpoint
+/// Uses the /rest/api/3/search/jql endpoint
+/// Email and API Token are from JiraConfig (shared credentials)
 /// </summary>
 public class JiraApiService : IJiraApiService
 {
@@ -45,13 +46,17 @@ public class JiraApiService : IJiraApiService
             throw new InvalidOperationException($"No active Jira configuration found for project ID: {projectId}");
         }
 
-        if (string.IsNullOrWhiteSpace(jiraConfig.JiraUrl) ||
-            string.IsNullOrWhiteSpace(jiraConfig.Email) ||
-            string.IsNullOrWhiteSpace(jiraConfig.ApiToken) ||
-            string.IsNullOrWhiteSpace(jiraConfig.ProjectKey))
-        {
-            throw new InvalidOperationException("Jira configuration is incomplete. Please ensure JiraUrl, Email, ApiToken, and ProjectKey are configured.");
-        }
+        if (string.IsNullOrWhiteSpace(jiraConfig.JiraUrl))
+            throw new InvalidOperationException("Jira URL is not configured");
+
+        if (string.IsNullOrWhiteSpace(jiraConfig.Email))
+            throw new InvalidOperationException("Jira Email is not configured");
+
+        if (string.IsNullOrWhiteSpace(jiraConfig.ApiToken))
+            throw new InvalidOperationException("Jira API Token is not configured");
+
+        if (string.IsNullOrWhiteSpace(jiraConfig.ProjectKey))
+            throw new InvalidOperationException("Jira Project Key is not configured");
 
         var client = _httpClientFactory.CreateClient();
 
@@ -63,8 +68,7 @@ public class JiraApiService : IJiraApiService
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", authToken);
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        // Build the new Jira search endpoint URL (migrated from /rest/api/3/search to /rest/api/3/search/jql)
-        // Reference: https://developer.atlassian.com/changelog/#CHANGE-2046
+        // Build the Jira search endpoint URL
         var jql = $"project = {jiraConfig.ProjectKey} ORDER BY created DESC";
         var fields = "summary,description,status,issuetype,priority,labels,components,assignee,created,updated,issuelinks,fixVersions,parent,comment,resolution,subtasks,environment";
 

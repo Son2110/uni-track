@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PMSS.API.Services;
+using System.Security.Claims;
 using PMSS.Application.Interfaces.Services;
 
 namespace PMSS.API.Controllers;
@@ -18,6 +19,7 @@ public class SrsController : ControllerBase
     private readonly ISrsGenerationService _srsGenerationService;
     private readonly IAiSrsGenerationService _aiSrsGenerationService;
     private readonly TemporaryDownloadStore _downloadStore;
+    private readonly IGithubContributionReportService _githubContributionReportService;
 
     public SrsController(
         ISrsGenerationService srsGenerationService,
@@ -164,12 +166,23 @@ public class SrsController : ControllerBase
         [FromQuery] string? modelOption = null,
         [FromQuery] bool downloadAsLink = false)
     {
-        var result = await _aiSrsGenerationService.GenerateGithubReportMarkdownAsync(projectId, usePaidModel, modelOption);
+        Guid? userId = null;
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (Guid.TryParse(userIdClaim, out var parsedUserId))
+            userId = parsedUserId;
+
+        var result = await _githubContributionReportService.GenerateAndSaveAsync(
+            projectId,
+            userId,
+            usePaidModel,
+            modelOption,
+            recentWeeks,
+            includeMermaidDiagrams);
 
         if (!result.Success)
             return NotFound(result);
 
-        if (string.IsNullOrWhiteSpace(result.Data))
+        if (result.Data == null || string.IsNullOrWhiteSpace(result.Data.MarkdownContent))
             return UnprocessableEntity(new { success = false, message = "The AI model returned empty content. Please try again." });
 
         var bytes = System.Text.Encoding.UTF8.GetBytes(result.Data!);
