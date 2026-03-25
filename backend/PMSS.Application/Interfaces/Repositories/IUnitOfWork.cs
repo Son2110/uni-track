@@ -16,7 +16,7 @@ public interface IUnitOfWork : IDisposable
     IJiraConfigRepository JiraConfigs { get; }
     IAccessRequestRepository AccessRequests { get; }
     INotificationRepository Notifications { get; }
-
+    IGithubContributionReportRepository GithubContributionReports { get; }
     Task<int> SaveChangesAsync();
     Task BeginTransactionAsync();
     Task CommitTransactionAsync();

@@ -14,6 +14,8 @@ public class JiraConfigDto
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public string? CreatedByUserName { get; set; }
 }
 
 public class CreateJiraConfigDto
@@ -33,7 +35,6 @@ public class CreateJiraConfigDto
     public string ApiToken { get; set; } = string.Empty;
 
     [Required]
-    [RegularExpression(@"^[A-Z][A-Z0-9_]*$", ErrorMessage = "Project key must be uppercase letters, numbers, and underscores")]
     public string ProjectKey { get; set; } = string.Empty;
 }
 
@@ -47,7 +48,6 @@ public class UpdateJiraConfigDto
 
     public string? ApiToken { get; set; }
 
-    [RegularExpression(@"^[A-Z][A-Z0-9_]*$", ErrorMessage = "Project key must be uppercase letters, numbers, and underscores")]
     public string? ProjectKey { get; set; }
 
     public bool? IsActive { get; set; }

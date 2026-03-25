@@ -23,6 +23,7 @@ public class UnitOfWork : IUnitOfWork
     public IJiraConfigRepository JiraConfigs { get; }
     public IAccessRequestRepository AccessRequests { get; }
     public INotificationRepository Notifications { get; }
+    public IGithubContributionReportRepository GithubContributionReports { get; }
 
     public UnitOfWork(
         ApplicationDbContext context,
@@ -39,7 +40,8 @@ public class UnitOfWork : IUnitOfWork
         IUserWeeklyContributionRepository userWeeklyContributions,
         IJiraConfigRepository jiraConfigs,
         IAccessRequestRepository accessRequests,
-        INotificationRepository notifications)
+        INotificationRepository notifications,
+        IGithubContributionReportRepository githubContributionReports)
     {
         _context = context;
         Semesters = semesters;
@@ -56,6 +58,7 @@ public class UnitOfWork : IUnitOfWork
         JiraConfigs = jiraConfigs;
         AccessRequests = accessRequests;
         Notifications = notifications;
+        GithubContributionReports = githubContributionReports;
     }
 
     public async Task<int> SaveChangesAsync()
