@@ -184,6 +184,30 @@ export const useDeleteUser = () => {
   });
 };
 
+// Update password mutation
+export const useUpdatePassword = () => {
+  return useMutation({
+    mutationFn: async ({
+      id,
+      currentPassword,
+      newPassword,
+    }: {
+      id: string;
+      currentPassword: string;
+      newPassword: string;
+    }) => {
+      const response = await apiClient.patch<any>(
+        `/api/v1/users/${id}/password`,
+        {
+          currentPassword,
+          newPassword,
+        },
+      );
+      return response.data;
+    },
+  });
+};
+
 // Re-export types for convenience
 export type {
   UserFilterParams,

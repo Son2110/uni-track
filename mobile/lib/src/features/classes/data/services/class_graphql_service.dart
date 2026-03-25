@@ -22,6 +22,8 @@ class ClassGraphQLService {
           updatedAt
           semester {
             name
+            startDate
+            endDate
           }
           course {
             name

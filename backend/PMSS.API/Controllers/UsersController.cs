@@ -35,10 +35,10 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetAll([FromQuery] UserFilterParams filterParams)
     {
         var result = await _userService.GetAllUsersAsync(filterParams);
-        
+
         if (!result.Success)
             return BadRequest(result);
-        
+
         return Ok(result);
     }
 
@@ -55,10 +55,10 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> GetById(Guid id)
     {
         var result = await _userService.GetUserByIdAsync(id);
-        
+
         if (!result.Success)
             return NotFound(result);
-        
+
         return Ok(result);
     }
 
@@ -79,10 +79,10 @@ public class UsersController : ControllerBase
             return BadRequest(ModelState);
 
         var result = await _userService.CreateUserAsync(dto);
-        
+
         if (!result.Success)
             return BadRequest(result);
-        
+
         return CreatedAtAction(nameof(GetById), new { id = result.Data!.UserId }, result);
     }
 
@@ -96,7 +96,7 @@ public class UsersController : ControllerBase
     /// <response code="400">If the request data is invalid</response>
     /// <response code="404">If the user is not found</response>
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin, Teacher, Student")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -106,10 +106,10 @@ public class UsersController : ControllerBase
             return BadRequest(ModelState);
 
         var result = await _userService.UpdateUserAsync(id, dto);
-        
+
         if (!result.Success)
             return BadRequest(result);
-        
+
         return Ok(result);
     }
 
@@ -132,10 +132,10 @@ public class UsersController : ControllerBase
             return BadRequest(ModelState);
 
         var result = await _userService.UpdatePasswordAsync(id, dto);
-        
+
         if (!result.Success)
             return BadRequest(result);
-        
+
         return Ok(result);
     }
 
@@ -153,10 +153,10 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> Delete(Guid id)
     {
         var result = await _userService.DeleteUserAsync(id);
-        
+
         if (!result.Success)
             return NotFound(result);
-        
+
         return NoContent();
     }
 }

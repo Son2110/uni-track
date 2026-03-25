@@ -16,7 +16,7 @@ public class JiraConfigConfiguration : IEntityTypeConfiguration<JiraConfig>
         
         builder.Property(jc => jc.ApiToken)
             .IsRequired()
-            .HasMaxLength(255);
+            .HasMaxLength(2048);
         
         builder.HasIndex(jc => jc.ProjectId)
             .IsUnique();

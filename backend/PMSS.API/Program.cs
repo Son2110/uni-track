@@ -1,6 +1,9 @@
 using PMSS.Infrastructure.DependencyInjection;
 using PMSS.Infrastructure.Middleware;
+using PMSS.Infrastructure.Data;
 using PMSS.API.GraphQL;
+using PMSS.API.Services;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Serilog;
 
@@ -17,6 +20,8 @@ try
     builder.Host.UseSerilog();
 
     builder.Services.AddControllers();
+    builder.Services.AddMemoryCache();
+    builder.Services.AddSingleton<TemporaryDownloadStore>();
 
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
@@ -26,10 +31,10 @@ try
         {
             Name = "Authorization",
             Type = SecuritySchemeType.Http,
-            Scheme = "Bearer",
+            Scheme = "bearer",
             BearerFormat = "JWT",
             In = ParameterLocation.Header,
-            Description = "Enter your JWT token"
+            Description = "Paste JWT token only (without 'Bearer ' prefix)"
         });
         options.AddSecurityRequirement(doc => new OpenApiSecurityRequirement
         {
@@ -63,6 +68,23 @@ try
     });
 
     var app = builder.Build();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        try
+        {
+            await dbContext.Database.MigrateAsync();
+        }
+        catch (InvalidOperationException ex) when (app.Environment.IsDevelopment() && ex.Message.Contains("PendingModelChangesWarning"))
+        {
+            Log.Warning(ex, "Skipping auto-migration in Development due to pending model changes. API will continue to run.");
+        }
+        catch (Exception ex) when (app.Environment.IsDevelopment())
+        {
+            Log.Warning(ex, "Auto-migration failed in Development. API will continue to run.");
+        }
+    }
 
     if (app.Environment.IsDevelopment())
     {
