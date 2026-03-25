@@ -2,6 +2,7 @@ using PMSS.Infrastructure.DependencyInjection;
 using PMSS.Infrastructure.Middleware;
 using PMSS.Infrastructure.Data;
 using PMSS.API.GraphQL;
+using PMSS.API.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi;
 using Serilog;
@@ -19,6 +20,8 @@ try
     builder.Host.UseSerilog();
 
     builder.Services.AddControllers();
+    builder.Services.AddMemoryCache();
+    builder.Services.AddSingleton<TemporaryDownloadStore>();
 
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen(options =>
