@@ -24,11 +24,13 @@ public class SrsController : ControllerBase
     public SrsController(
         ISrsGenerationService srsGenerationService,
         IAiSrsGenerationService aiSrsGenerationService,
-        TemporaryDownloadStore downloadStore)
+        TemporaryDownloadStore downloadStore,
+        IGithubContributionReportService githubContributionReportService)
     {
         _srsGenerationService = srsGenerationService;
         _aiSrsGenerationService = aiSrsGenerationService;
         _downloadStore = downloadStore;
+        _githubContributionReportService = githubContributionReportService;
     }
 
     /// <summary>
@@ -164,7 +166,9 @@ public class SrsController : ControllerBase
         Guid projectId,
         [FromQuery] bool usePaidModel = false,
         [FromQuery] string? modelOption = null,
-        [FromQuery] bool downloadAsLink = false)
+        [FromQuery] bool downloadAsLink = false,
+        [FromQuery] int recentWeeks = 12,
+        [FromQuery] bool includeMermaidDiagrams = false)
     {
         Guid? userId = null;
         var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -185,7 +189,7 @@ public class SrsController : ControllerBase
         if (result.Data == null || string.IsNullOrWhiteSpace(result.Data.MarkdownContent))
             return UnprocessableEntity(new { success = false, message = "The AI model returned empty content. Please try again." });
 
-        var bytes = System.Text.Encoding.UTF8.GetBytes(result.Data!);
+        var bytes = System.Text.Encoding.UTF8.GetBytes(result.Data.MarkdownContent);
         const string contentType = "text/markdown";
         var fileName = $"GitHub_Report_{projectId:N}.md";
 
