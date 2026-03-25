@@ -143,3 +143,86 @@ class GithubContributionData {
             .toList(),
       );
 }
+
+class GithubContributionReportSummary {
+  final String reportId;
+  final String projectId;
+  final DateTime periodStart;
+  final DateTime periodEnd;
+  final int totalCommits;
+  final int contributorCount;
+  final int activeContributorCount;
+  final String executiveSummary;
+  final String modelProvider;
+  final String modelName;
+  final DateTime createdAt;
+
+  const GithubContributionReportSummary({
+    required this.reportId,
+    required this.projectId,
+    required this.periodStart,
+    required this.periodEnd,
+    required this.totalCommits,
+    required this.contributorCount,
+    required this.activeContributorCount,
+    required this.executiveSummary,
+    required this.modelProvider,
+    required this.modelName,
+    required this.createdAt,
+  });
+
+  factory GithubContributionReportSummary.fromJson(Map<String, dynamic> json) =>
+      GithubContributionReportSummary(
+        reportId: json['reportId']?.toString() ?? '',
+        projectId: json['projectId']?.toString() ?? '',
+        periodStart: DateTime.parse(json['periodStart'] as String),
+        periodEnd: DateTime.parse(json['periodEnd'] as String),
+        totalCommits: (json['totalCommits'] as num?)?.toInt() ?? 0,
+        contributorCount: (json['contributorCount'] as num?)?.toInt() ?? 0,
+        activeContributorCount:
+            (json['activeContributorCount'] as num?)?.toInt() ?? 0,
+        executiveSummary: json['executiveSummary'] as String? ?? '',
+        modelProvider: json['modelProvider'] as String? ?? '',
+        modelName: json['modelName'] as String? ?? '',
+        createdAt: DateTime.parse(json['createdAt'] as String),
+      );
+}
+
+class GithubContributionReportDetail extends GithubContributionReportSummary {
+  final String insightsJson;
+  final String markdownContent;
+
+  const GithubContributionReportDetail({
+    required super.reportId,
+    required super.projectId,
+    required super.periodStart,
+    required super.periodEnd,
+    required super.totalCommits,
+    required super.contributorCount,
+    required super.activeContributorCount,
+    required super.executiveSummary,
+    required super.modelProvider,
+    required super.modelName,
+    required super.createdAt,
+    required this.insightsJson,
+    required this.markdownContent,
+  });
+
+  factory GithubContributionReportDetail.fromJson(Map<String, dynamic> json) =>
+      GithubContributionReportDetail(
+        reportId: json['reportId']?.toString() ?? '',
+        projectId: json['projectId']?.toString() ?? '',
+        periodStart: DateTime.parse(json['periodStart'] as String),
+        periodEnd: DateTime.parse(json['periodEnd'] as String),
+        totalCommits: (json['totalCommits'] as num?)?.toInt() ?? 0,
+        contributorCount: (json['contributorCount'] as num?)?.toInt() ?? 0,
+        activeContributorCount:
+            (json['activeContributorCount'] as num?)?.toInt() ?? 0,
+        executiveSummary: json['executiveSummary'] as String? ?? '',
+        modelProvider: json['modelProvider'] as String? ?? '',
+        modelName: json['modelName'] as String? ?? '',
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        insightsJson: json['insightsJson'] as String? ?? '',
+        markdownContent: json['markdownContent'] as String? ?? '',
+      );
+}

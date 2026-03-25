@@ -5,6 +5,7 @@ import '../../../constants/app_colors.dart';
 import '../data/models/github_contribution_model.dart';
 import '../data/models/project_model.dart';
 import '../data/services/github_contribution_service.dart';
+import 'project_github_reports_list_screen.dart';
 
 class ProjectGithubContributionsScreen extends StatefulWidget {
   final ProjectModel project;
@@ -177,6 +178,19 @@ class _ProjectGithubContributionsScreenState
                       ),
                     ),
                   ),
+                const SizedBox(height: 20),
+                _ReportsNavigationCard(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ProjectGithubReportsListScreen(
+                          project: widget.project,
+                          token: widget.token,
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 const SizedBox(height: 16),
               ],
             ),
@@ -661,6 +675,71 @@ class _MiniStat extends StatelessWidget {
           style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+}
+
+class _ReportsNavigationCard extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _ReportsNavigationCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.description_rounded,
+                  color: AppColors.secondary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'GitHub Contribution Reports',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'View all reports of this project',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
